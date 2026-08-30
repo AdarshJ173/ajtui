@@ -63,7 +63,7 @@ DEFAULT_ROUTINES = [
     "Deep focus session (90 mins)",
     "Zone 2 Cardio or Strength workout",
     "Read 15 pages of non-fiction",
-    "Nightly shutdown & tomorrow plan",
+    "Nightly retrospective & tomorrow plan",
 ]
 
 
@@ -304,18 +304,30 @@ class KeyChipBar(Static):
         th: Theme = self.app.theme_obj
         p = th.palette
         g = th.glyphs
+        app = self.app
 
-        chips = [
-            ("↵", "Toggle"),
-            ("A", "Add"),
-            ("E", "Rename"),
-            ("D", "Delete"),
-            ("K/J", "Move"),
-            ("←/→", "Date"),
-            ("C", "Calendar"),
-            ("T", "Theme"),
-            ("Q", "Quit"),
-        ]
+        if app.calendar_active:
+            chips = [
+                ("↵", "Jump Date"),
+                ("Esc", "Exit Cal"),
+                ("←/→", "Day"),
+                ("↑/↓", "Week"),
+                ("0", "Today"),
+                ("T", "Theme"),
+                ("Q", "Quit"),
+            ]
+        else:
+            chips = [
+                ("↵", "Toggle"),
+                ("A", "Add"),
+                ("E", "Rename"),
+                ("D", "Delete"),
+                ("K/J", "Move"),
+                ("←/→", "Date"),
+                ("C", "Calendar"),
+                ("T", "Theme"),
+                ("Q", "Quit"),
+            ]
 
         t = Text()
         t.append(f" {g.squared} ", style=f"{p.accent}")
@@ -452,7 +464,7 @@ class TaskListView(Static):
 
         t = Text()
         for idx, task in enumerate(tasks):
-            is_selected = (idx == cursor)
+            is_selected = (idx == cursor) and not app.calendar_active
             is_done = comps.get(task.id, Completion(task.id, "", False)).done
 
             # Prefix indicator
@@ -465,7 +477,7 @@ class TaskListView(Static):
                 prefix_style = f"{p.text_faint}"
                 bg_style = ""
 
-            # Checkbox
+            # Checkbox & title styling
             if is_done:
                 check_icon = f"[{g.check}]"
                 check_style = f"bold {p.state_ok}"
@@ -503,7 +515,7 @@ class TaskListView(Static):
 
 
 class MonthCalendarView(Static):
-    """Compact month calendar with historical completion semaphores."""
+    """Compact month calendar with historical completion semaphores and interactive cursor."""
 
     def render(self) -> Text:
         app = self.app
@@ -518,7 +530,11 @@ class MonthCalendarView(Static):
 
         t = Text()
         # Header
-        t.append(f"  {g.spark} {month_name} {year}\n", style=f"bold {p.accent_hi}")
+        mode_tag = " [BROWSING]" if app.calendar_active else ""
+        t.append(f"  {g.spark} {month_name} {year}", style=f"bold {p.accent_hi}")
+        if mode_tag:
+            t.append(mode_tag, style=f"bold {p.state_warn}")
+        t.append("\n")
         t.append("  Mo  Tu  We  Th  Fr  Sa  Su\n", style=f"{p.text_faint}")
 
         month_matrix = calendar.monthcalendar(year, month)
@@ -546,10 +562,13 @@ class MonthCalendarView(Static):
                         marker_color = p.text_faint
 
                     day_str = f"{day:2d}"
+                    is_active_cursor = (d_obj == cal_date) and app.calendar_active
                     is_viewed = (d_obj == current)
                     is_real_today = (d_obj == today)
 
-                    if is_viewed:
+                    if is_active_cursor:
+                        row.append(day_str, style=f"bold {p.on_accent} on {p.accent_hi}")
+                    elif is_viewed:
                         row.append(day_str, style=f"bold {p.on_accent} on {p.accent}")
                     elif is_real_today:
                         row.append(day_str, style=f"bold underline {p.accent_hi}")
@@ -563,8 +582,8 @@ class MonthCalendarView(Static):
 
         # Legend
         t.append("\n  ", style="")
-        t.append(f"{g.done} Complete  ", style=f"{p.state_ok}")
-        t.append(f"{g.partial} Partial  ", style=f"{p.state_warn}")
+        t.append(f"{g.done} Done  ", style=f"{p.state_ok}")
+        t.append(f"{g.partial} Part  ", style=f"{p.state_warn}")
         t.append(f"{g.empty} None", style=f"{p.text_faint}")
         return t
 
@@ -582,7 +601,6 @@ class MomentumDock(Static):
         comps = app.completions
         total = len(tasks)
         done = sum(1 for t in tasks if comps.get(t.id, Completion(t.id, "", False)).done)
-        target_fraction = (done / total) if total > 0 else 0.0
 
         current_anim_fraction = app.anim_progress
         w = max(20, self.size.width - 24)
@@ -730,13 +748,25 @@ class DailyOS(App):
     ):
         super().__init__()
         self.caps = Capabilities()
-        self.theme_name = theme_name or "lifeos"
+
+        # Theme persistence check
+        persisted_theme = os.environ.get("LIFEOS_THEME", "").strip().lower()
+        if not theme_name and not persisted_theme:
+            cfg_file = Path.home() / ".lifeos" / "theme.cfg"
+            if cfg_file.exists():
+                try:
+                    persisted_theme = cfg_file.read_text().strip().lower()
+                except Exception:
+                    pass
+
+        self.theme_name = theme_name or persisted_theme or "lifeos"
         self.theme_obj = resolve_startup_theme(self.theme_name, self.caps)
         self.CSS = self.theme_obj.css
 
         self.db = DatabaseManager(db_path)
         self.current_date = datetime.date.today()
         self.cal_focus_date = datetime.date.today()
+        self.calendar_active = False
 
         self.tasks: List[Task] = []
         self.completions: Dict[int, Completion] = {}
@@ -809,7 +839,7 @@ class DailyOS(App):
         self._refresh_all_widgets()
 
     def _refresh_all_widgets(self) -> None:
-        for selector in [HeaderBar, HeroBanner, TaskListView, MonthCalendarView, MomentumDock, ToastRail]:
+        for selector in [HeaderBar, HeroBanner, TaskListView, MonthCalendarView, MomentumDock, ToastRail, KeyChipBar]:
             try:
                 self.query_one(selector).refresh()
             except Exception:
@@ -857,20 +887,97 @@ class DailyOS(App):
     # -----------------------------------------------------------------------
 
     def on_key(self, event: events.Key) -> None:
-        k = event.key.lower()
+        k = event.key
+        k_lower = k.lower()
 
-        # Navigation: Routine list
-        if k in ("up", "k"):
+        # Handle Calendar Interactive Mode first if active
+        if self.calendar_active:
+            if k_lower in ("escape", "c"):
+                self.calendar_active = False
+                self.cal_focus_date = self.current_date
+                self.set_toast("Exited calendar — back to routine list")
+                self._refresh_all_widgets()
+                return
+            elif k_lower in ("left", "h"):
+                self.cal_focus_date -= datetime.timedelta(days=1)
+                self.month_stats = self.db.get_month_completion_stats(
+                    self.cal_focus_date.year, self.cal_focus_date.month
+                )
+                self.query_one(MonthCalendarView).refresh()
+                return
+            elif k_lower in ("right", "l"):
+                self.cal_focus_date += datetime.timedelta(days=1)
+                self.month_stats = self.db.get_month_completion_stats(
+                    self.cal_focus_date.year, self.cal_focus_date.month
+                )
+                self.query_one(MonthCalendarView).refresh()
+                return
+            elif k_lower in ("up", "k"):
+                self.cal_focus_date -= datetime.timedelta(days=7)
+                self.month_stats = self.db.get_month_completion_stats(
+                    self.cal_focus_date.year, self.cal_focus_date.month
+                )
+                self.query_one(MonthCalendarView).refresh()
+                return
+            elif k_lower in ("down", "j"):
+                self.cal_focus_date += datetime.timedelta(days=7)
+                self.month_stats = self.db.get_month_completion_stats(
+                    self.cal_focus_date.year, self.cal_focus_date.month
+                )
+                self.query_one(MonthCalendarView).refresh()
+                return
+            elif k in ("space", "enter"):
+                self.current_date = self.cal_focus_date
+                self.calendar_active = False
+                self.refresh_data()
+                self.animate_progress_bar()
+                self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
+                return
+            elif k_lower in ("0", "today"):
+                self.cal_focus_date = datetime.date.today()
+                self.current_date = self.cal_focus_date
+                self.calendar_active = False
+                self.refresh_data()
+                self.animate_progress_bar()
+                self.set_toast("Jumped to today")
+                return
+            elif k in ("t", "T"):
+                self.action_cycle_theme()
+                return
+            elif k_lower == "q":
+                self.exit()
+                return
+
+        # Routine list navigation & actions when calendar is not interactive
+        if k in ("K", "shift+k", "ctrl+up", "["):
+            if self.tasks:
+                curr_task = self.tasks[self.cursor_idx]
+                self.db.reorder_task(curr_task.id, -1)
+                self.cursor_idx = max(0, self.cursor_idx - 1)
+                self.refresh_data()
+                self.set_toast(f"Shifted up: '{curr_task.title}'")
+            return
+
+        if k in ("J", "shift+j", "ctrl+down", "]"):
+            if self.tasks:
+                curr_task = self.tasks[self.cursor_idx]
+                self.db.reorder_task(curr_task.id, 1)
+                self.cursor_idx = min(len(self.tasks) - 1, self.cursor_idx + 1)
+                self.refresh_data()
+                self.set_toast(f"Shifted down: '{curr_task.title}'")
+            return
+
+        if k_lower in ("up", "k"):
             if self.tasks:
                 self.cursor_idx = (self.cursor_idx - 1) % len(self.tasks)
                 self.query_one(TaskListView).refresh()
-        elif k in ("down", "j"):
+        elif k_lower in ("down", "j"):
             if self.tasks:
                 self.cursor_idx = (self.cursor_idx + 1) % len(self.tasks)
                 self.query_one(TaskListView).refresh()
 
         # Toggle completion
-        elif event.key in ("space", "enter"):
+        elif k in ("space", "enter"):
             if self.tasks:
                 curr_task = self.tasks[self.cursor_idx]
                 d_str = self.current_date.strftime("%Y-%m-%d")
@@ -882,62 +989,53 @@ class DailyOS(App):
                 self.set_timer(0.3, self._clear_flash)
 
         # Date switching
-        elif k in ("left", "h"):
+        elif k_lower in ("left", "h"):
             self.current_date -= datetime.timedelta(days=1)
             self.cal_focus_date = self.current_date
             self.refresh_data()
             self.animate_progress_bar()
             self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
-        elif k in ("right", "l"):
+        elif k_lower in ("right", "l"):
             self.current_date += datetime.timedelta(days=1)
             self.cal_focus_date = self.current_date
             self.refresh_data()
             self.animate_progress_bar()
             self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
-        elif k in ("0", "today"):
+        elif k_lower in ("0", "today"):
             self.current_date = datetime.date.today()
             self.cal_focus_date = self.current_date
             self.refresh_data()
             self.animate_progress_bar()
             self.set_toast("Returned to today")
 
-        # Reordering tasks
-        elif event.key in ("K", "["):
-            if self.tasks:
-                curr_task = self.tasks[self.cursor_idx]
-                self.db.reorder_task(curr_task.id, -1)
-                self.cursor_idx = max(0, self.cursor_idx - 1)
-                self.refresh_data()
-        elif event.key in ("J", "]"):
-            if self.tasks:
-                curr_task = self.tasks[self.cursor_idx]
-                self.db.reorder_task(curr_task.id, 1)
-                self.cursor_idx = min(len(self.tasks) - 1, self.cursor_idx + 1)
-                self.refresh_data()
-
         # Add task
-        elif k == "a":
+        elif k_lower == "a":
             self.action_add_task()
 
         # Rename task
-        elif k in ("e", "r"):
+        elif k_lower in ("e", "r"):
             self.action_rename_task()
 
         # Delete task
-        elif k in ("d", "x"):
+        elif k_lower in ("d", "x"):
             self.action_delete_task()
 
         # Cycle theme
-        elif event.key == "t" or event.key == "T":
+        elif k in ("t", "T"):
             self.action_cycle_theme()
 
-        # Toggle calendar view
-        elif k == "c":
-            cal_container = self.query_one("#calendar_container")
-            cal_container.toggle_class("hidden")
+        # Toggle / Enter calendar interactive browsing
+        elif k_lower == "c":
+            self.calendar_active = not self.calendar_active
+            self.cal_focus_date = self.current_date
+            if self.calendar_active:
+                self.set_toast("Calendar mode: Arrows navigate · Enter jumps · Esc exits")
+            else:
+                self.set_toast("Exited calendar — back to routine list")
+            self._refresh_all_widgets()
 
         # Quit
-        elif k == "q":
+        elif k_lower == "q":
             self.exit()
 
     def _clear_flash(self) -> None:
@@ -989,6 +1087,15 @@ class DailyOS(App):
         next_idx = (themes.index(self.theme_name) + 1) % len(themes) if self.theme_name in themes else 0
         self.theme_name = themes[next_idx]
         self.theme_obj = get_theme(self.theme_name, self.caps)
+
+        # Save theme persistence
+        try:
+            cfg_dir = Path.home() / ".lifeos"
+            cfg_dir.mkdir(parents=True, exist_ok=True)
+            (cfg_dir / "theme.cfg").write_text(self.theme_name)
+        except Exception:
+            pass
+
         for key in list(self.stylesheet.source.keys()):
             if "CSS" in key[1]:
                 old_source = self.stylesheet.source[key]
