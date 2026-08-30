@@ -1,23 +1,7 @@
-#!/usr/bin/env python3
 """
-lifeOS — Theme Engine & Capability Layer
-=========================================
-Single source of truth for every visual token in lifeOS Daily:
-
-  * Capabilities  — color depth (truecolor/256/16) + unicode support detection.
-  * Glyphs        — full unicode set with per-glyph ASCII fallback.
-  * Palette       — semantic color tokens (one per theme, per terminal capability).
-  * Theme         — palette + typography + spacing + metrics + animation timings
-                    + a generated Textual CSS template + micro-copy registry
-                    + the signature ASCII mark.
-  * Animator      — tiny frame-batched driver (single timer, named sequences).
-
-Three named themes ship by default:
-  lifeos    cyan-on-black flagship
-  phosphor  monochrome matrix green
-  amber     warm single-hue amber
-
-No widget may contain a hardcoded color — everything funnels through here.
+lifeOS Theme Engine & Visual Design System
+==========================================
+Unified source of truth for visual tokens, palettes, glyph sets, animations, and CSS.
 """
 
 from __future__ import annotations
@@ -31,9 +15,8 @@ from rich.text import Text
 
 
 # ---------------------------------------------------------------------------
-# Capability detection — color depth & unicode, no heuristics left to chance
+# Capability detection
 # ---------------------------------------------------------------------------
-
 
 def detect_color_level(env: Optional[dict] = None) -> str:
     """Return 'truecolor' | 'eight_bit' | 'standard'."""
@@ -54,8 +37,7 @@ def detect_color_level(env: Optional[dict] = None) -> str:
 
 
 def detect_unicode(env: Optional[dict] = None) -> bool:
-    """True when the locale advertises UTF-8 (TERM=dumb is allowed to — some
-    regex-dump terminals still render unicode; LANG/LC_* decide)."""
+    """True when the locale advertises UTF-8."""
     e = os.environ if env is None else env
     blob = " ".join(
         (e.get(k) or "") for k in ("LC_ALL", "LC_CTYPE", "LANG")
@@ -70,7 +52,6 @@ class Capabilities:
         self.color_level: str = detect_color_level(env)
         self.unicode: bool = detect_unicode(env)
         e = os.environ if env is None else env
-        # reduced motion: our own flag plus the de-facto standards
         self.reduced_motion: bool = bool(
             e.get("LIFEOS_NO_MOTION")
             or e.get("NO_MOTION")
@@ -83,9 +64,8 @@ class Capabilities:
 
 
 # ---------------------------------------------------------------------------
-# Glyph sets — every glyph has an ASCII twin; no broken glyphs, ever
+# Glyph sets — Unicode with ASCII fallbacks
 # ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class Glyphs:
@@ -99,7 +79,7 @@ class Glyphs:
     bar_left: str
     bar_right: str
     bar_full: str
-    bar_shades: str   # longest→shortest partial fill
+    bar_shades: str
     bar_track: str
     spark_line: str
     flame: str
@@ -109,31 +89,40 @@ class Glyphs:
     empty: str
     w_right: str
     enter: str
+    journal: str
+    cloud_live: str
+    cloud_syncing: str
+    cloud_offline: str
+    cloud_conflict: str
 
 
 _GLYPH_TABLE: Dict[str, tuple] = {
-    # field        unicode            ascii
-    "logo":        ("◆",               "*"),
-    "spark":       ("✦",               "*"),
-    "check":       ("✓",               "x"),
-    "check_flash": ("✔",               "#"),
-    "open_box":    ("○",               "o"),
-    "squared":     ("▪",               "#"),
-    "line_v":      ("│",               "|"),
-    "bar_left":    ("▐",               "["),
-    "bar_right":   ("▌",               "]"),
-    "bar_full":    ("█",               "#"),
-    "bar_shades":  ("▓▒░",             "#+."),
-    "bar_track":   ("·",               "."),
-    # 7 levels, index 1 is the "none" baseline dot
-    "spark_line":  (" ▁▂▃▄▅▆",         " ._-^~"),
-    "flame":       ("♦",               "^"),
-    "bolt":        ("»",               ">"),
-    "done":        ("●",               "o"),
-    "partial":     ("◐",               "%"),
-    "empty":       ("·",               "."),
-    "w_right":     ("▸",               ">"),
-    "enter":       ("↵",               "R"),
+    # field            unicode            ascii
+    "logo":            ("◆",               "*"),
+    "spark":           ("✦",               "*"),
+    "check":           ("✓",               "x"),
+    "check_flash":     ("✔",               "#"),
+    "open_box":        ("○",               "o"),
+    "squared":         ("▪",               "#"),
+    "line_v":          ("│",               "|"),
+    "bar_left":        ("▐",               "["),
+    "bar_right":       ("▌",               "]"),
+    "bar_full":        ("█",               "#"),
+    "bar_shades":      ("▓▒░",             "#+."),
+    "bar_track":       ("·",               "."),
+    "spark_line":      (" ▁▂▃▄▅▆",         " ._-^~"),
+    "flame":           ("♦",               "^"),
+    "bolt":            ("»",               ">"),
+    "done":            ("●",               "o"),
+    "partial":         ("◐",               "%"),
+    "empty":           ("·",               "."),
+    "w_right":         ("▸",               ">"),
+    "enter":           ("↵",               "R"),
+    "journal":         ("▪",               "j"),
+    "cloud_live":      ("☁",               "~"),
+    "cloud_syncing":   ("↻",               "*"),
+    "cloud_offline":   ("⊘",               "-"),
+    "cloud_conflict":  ("⚠",               "!"),
 }
 
 
@@ -142,17 +131,11 @@ def build_glyphs(uni: bool) -> Glyphs:
 
 
 # ---------------------------------------------------------------------------
-# Palettes — semantic chromatic tokens per theme (+ neutrals)
+# Semantic Palettes
 # ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class Palette:
-    """
-    Semantic color slots. Every widget styles itself with these names only.
-    bg/panel/inset/line/line_soft are structure; text* the type ramp;
-    accent/accent_hi/state_ok/state_warn/hot are the chromatic voice.
-    """
     bg: str
     panel: str
     inset: str
@@ -279,9 +262,8 @@ THEME_LABELS = {
 
 
 # ---------------------------------------------------------------------------
-# Typography / spacing / metrics — the strict type ramp lives here
+# Typography & Metrics
 # ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class TypeRamp:
@@ -304,25 +286,24 @@ class Spacing:
 class Metrics:
     min_w: int = 58
     min_h: int = 20
-    cal_w: int = 37          # fixed calendar rail width
-    stack_bp: int = 84       # below this width the layout stacks vertically
-    list_h_stacked: int = 12 # task list height when stacked
+    cal_w: int = 38
+    stack_bp: int = 84
+    list_h_stacked: int = 12
 
 
 @dataclass(frozen=True)
 class AnimTuning:
-    tick: float = 0.033          # single driver tick (~30fps budget, input-safe)
-    progress_frames: int = 18    # eased bar sweep budget
-    flip_frames: int = 8         # check-off flip + spark budget
-    boot_frames: int = 13        # ~430ms boot, skippable
+    tick: float = 0.033
+    progress_frames: int = 18
+    flip_frames: int = 8
+    boot_frames: int = 13
     toast_ttl: float = 2.6
-    ambient_period: float = 1.0  # flame flicker cadence (opt-in only)
+    ambient_period: float = 1.0
 
 
 # ---------------------------------------------------------------------------
-# Micro-copy registry — every state speaks
+# Micro-copy
 # ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class Messages:
@@ -358,11 +339,12 @@ class Messages:
     toast_no_tasks: str = "nothing here yet — press a"
     toast_theme: str = "theme · {name}"
     toast_moved: str = "moved {dir} · {title}"
-
-
-# ---------------------------------------------------------------------------
-# Boot sequence — stages resolve in, always skippable, never blocking
-# ---------------------------------------------------------------------------
+    toast_journal_saved: str = "journal saved · {words} words"
+    toast_journal_deleted: str = "journal entry deleted"
+    toast_sync_forced: str = "syncing with Supabase…"
+    toast_sync_done: str = "cloud sync complete"
+    toast_sync_offline: str = "offline · working locally"
+    toast_conflict: str = "conflict resolved · saved backup to conflicts/"
 
 
 BOOT_STAGES = (
@@ -375,11 +357,6 @@ BOOT_STAGES = (
 )
 
 
-# ---------------------------------------------------------------------------
-# The Theme aggregate
-# ---------------------------------------------------------------------------
-
-
 class Theme:
     __slots__ = (
         "name", "label", "palette", "glyphs", "type", "spacing", "metrics",
@@ -390,7 +367,7 @@ class Theme:
         self.name = name
         self.label = THEME_LABELS.get(name, name)
         self.caps = caps
-        self.palette = _PALETTES[name][caps.color_level]
+        self.palette = _PALETTES.get(name, _PALETTES["lifeos"])[caps.color_level]
         self.glyphs = build_glyphs(caps.unicode)
         self.type = TypeRamp()
         self.spacing = Spacing()
@@ -402,7 +379,6 @@ class Theme:
 
 
 def _build_logo(caps: Capabilities) -> List[str]:
-    """The signature lifeOS mark: a rising-bars pulse. Two lines, box-safe."""
     if not caps.unicode:
         return [
             ".  _   .",
@@ -414,13 +390,6 @@ def _build_logo(caps: Capabilities) -> List[str]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# CSS template — one place; palette values substituted as CSS custom props
-# ---------------------------------------------------------------------------
-
-
-# Rich style tokens and Textual CSS tokens speak different dialects
-# (rich: "bright_black" / CSS: "ansi_bright_black"). Translate per context.
 _RICH_TO_CSS_COLOR = {
     "bright_black": "ansi_bright_black",
     "bright_white": "ansi_bright_white",
@@ -434,17 +403,13 @@ _RICH_TO_CSS_COLOR = {
 
 
 def css_color(token: str) -> str:
-    """Map a rich-style palette token to a valid Textual CSS color."""
     if not token:
         return "ansi_default"
-    # drop rich attributes like 'bold '
     last = token.split()[-1]
     return _RICH_TO_CSS_COLOR.get(last, last)
 
 
-def rich_style(token: str) -> str:
-    """Split a palette token so attributes never leak into 'on <color>' slots.
-    'bold cyan' -> ('bold ', 'cyan') joined back by callers as needed."""
+def rich_style(token: str) -> tuple[str, str]:
     parts = token.split()
     attrs, color = parts[:-1], parts[-1] if parts else ""
     return " ".join(attrs), color
@@ -569,6 +534,48 @@ Screen {{
     padding: 0 1;
 }}
 
+/* ┌──────────────────────── journal view ┐ */
+#journal_container {{
+    width: 1fr;
+    height: 1fr;
+    padding: 1 2;
+    margin: 1 1 0 1;
+    background: $panel;
+    border: round $line;
+    layout: vertical;
+}}
+
+#journal_header {{
+    height: 3;
+    padding: 0 1;
+    border-bottom: solid $line;
+}}
+
+#journal_reader {{
+    width: 1fr;
+    height: 1fr;
+    padding: 1 1;
+    background: $inset;
+    border: round $line;
+    overflow-y: scroll;
+}}
+
+#journal_editor {{
+    width: 1fr;
+    height: 1fr;
+    background: $inset;
+    border: round $accent;
+    color: $texthi;
+}}
+
+#journal_browse_list {{
+    width: 1fr;
+    height: 1fr;
+    padding: 1 1;
+    background: $inset;
+    border: round $line;
+}}
+
 /* ┌──────────────────────── boot overlay ┐ */
 #boot_layer {{
     background: $bg;
@@ -578,17 +585,6 @@ Screen {{
     height: 100%;
 }}
 
-/* ┌──────────────────────── min-size notice ┐ */
-#notice {{
-    display: none;
-    background: $bg;
-    color: $warn;
-    text-align: center;
-    content-align: center middle;
-    text-style: bold;
-    height: 1fr;
-}}
-
 /* ┌──────────────────────── modals ┐ */
 Input {{
     border: tall $line;
@@ -596,13 +592,14 @@ Input {{
     color: $texthi;
 }}
 Input:focus {{ border: tall $accent; }}
+TextArea {{
+    border: tall $line;
+    background: $inset;
+    color: $texthi;
+}}
+TextArea:focus {{ border: tall $accent; }}
 Button {{ margin-left: 1; }}
 """
-
-
-# ---------------------------------------------------------------------------
-# Theme registry + lookup
-# ---------------------------------------------------------------------------
 
 
 def available_themes() -> List[str]:
@@ -622,9 +619,8 @@ def resolve_startup_theme(cli_theme: Optional[str], caps: Capabilities) -> Theme
 
 
 # ---------------------------------------------------------------------------
-# Frame utilities — easing, braille edges, sparklines
+# Utilities
 # ---------------------------------------------------------------------------
-
 
 def ease_out_cubic(t: float) -> float:
     t = max(0.0, min(1.0, t))
@@ -632,19 +628,15 @@ def ease_out_cubic(t: float) -> float:
 
 
 def ease_out_back(t: float) -> float:
-    """Slight overshoot — used for the boot logo pop."""
     t = max(0.0, min(1.0, t))
     c = 1.70158
     return 1.0 + (c + 1.0) * ((t - 1.0) ** 3) + c * ((t - 1.0) ** 2)
 
 
-# Eighths-of-a-cell horizontal fill ramp for a braille-smooth bar edge.
 _EIGHTHS = " ▏▎▍▌▋▊▉█"
 
 
 def progress_bar_cells(frac: float, width: int, unicode: bool) -> List[str]:
-    """Return `width` cells: full blocks + a single partial cell at the fill
-    edge (eighth-cell resolution) + track. Caller colors them."""
     frac = max(0.0, min(1.0, frac))
     width = max(1, width)
     if not unicode:
@@ -661,7 +653,6 @@ def progress_bar_cells(frac: float, width: int, unicode: bool) -> List[str]:
 
 
 def sparkline(g: Glyphs, fractions: List[float]) -> str:
-    """Given fractions 0..1, render one bar per value from the theme ramp."""
     ramp = g.spark_line
     lvl_max = len(ramp) - 1
     out = []
@@ -669,19 +660,13 @@ def sparkline(g: Glyphs, fractions: List[float]) -> str:
         f = max(0.0, min(1.0, f))
         idx = int(round(f * lvl_max))
         if f <= 0.0001:
-            idx = 1   # the faint baseline dot reads as "none"
+            idx = 1
         out.append(ramp[idx])
     return "".join(out)
 
 
 def dotgrid(fractions: List[float], filled: str, empty: str) -> str:
-    """LED dot-matrix rendering of fractions — the activity-board look."""
     return "".join((filled if f >= 0.999 else empty) for f in fractions)
-
-
-# ---------------------------------------------------------------------------
-# Animator — one timer, many sequences. Small, safe, batch-oriented.
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -691,17 +676,11 @@ class _Sequence:
     interval: int
     on_frame: Callable[[int], None]
     on_done: Optional[Callable[[], None]]
-    gen: int          # generation counter — lets us cancel by name
+    gen: int
 
 
 class Animator:
-    """Drives all animations from a single Textual timer.
-
-    Guarantees: every sequence has a hard frame budget; cancel(name) stops
-    a sequence cleanly (on_done NOT fired unless asked); sequences never
-    touch the DOM between ticks — render-safe and input-safe by construction.
-    Re-playing a live name supersedes it (generation guard).
-    """
+    """Frame-batched animator from a single timer."""
 
     def __init__(self, app, tick: float = 0.033):
         self.app = app
@@ -732,7 +711,6 @@ class Animator:
         on_done: Optional[Callable[[], None]] = None,
         interval: int = 1,
     ) -> None:
-        """(Re)start a named sequence. Replaces any live one with same name."""
         prev = self._seqs.get(name)
         gen = (prev.gen + 1) if prev else 0
         self._seqs[name] = _Sequence(
@@ -760,7 +738,7 @@ class Animator:
         done_names: List[str] = []
         for name, seq in list(self._seqs.items()):
             if self._seqs.get(name) is not seq:
-                continue   # superseded mid-tick
+                continue
             last = self._last.get(name, -1.0)
             frame = int(last + seq.interval)
             if frame >= seq.n_frames - 1:
@@ -781,13 +759,7 @@ class Animator:
                     pass
 
 
-# ---------------------------------------------------------------------------
-# Rendering helpers shared by widgets
-# ---------------------------------------------------------------------------
-
-
 def fit(text: str, width: int, ellipsis: str = "…") -> str:
-    """Truncate to width with a trailing ellipsis; pad is the caller's job."""
     if width < 1:
         return ""
     if len(text) <= width:
@@ -796,5 +768,4 @@ def fit(text: str, width: int, ellipsis: str = "…") -> str:
 
 
 def dim_style(base: str) -> str:
-    """'dim X' — soften any palette color for spark echoes and trailing fades."""
     return f"dim {base}" if base else "dim"
