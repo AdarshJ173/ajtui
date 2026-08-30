@@ -1,91 +1,100 @@
 #!/usr/bin/env python3
 """
-◆ lifeOS Daily
-A keyboard-first, state-of-the-art terminal daily routine OS with calendar navigation.
+lifeOS Daily — State of the Art Routine & Momentum Tracker
+==========================================================
+Engineered terminal interface powered by Textual and rich typography.
 """
 
 from __future__ import annotations
 
 import calendar
 import datetime
+import math
 import os
 import sqlite3
-from contextlib import contextmanager
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from rich.segment import Segment
-from rich.style import Style
 from rich.text import Text
-
-from textual import events
+from textual import events, on
 from textual.app import App, ComposeResult
-from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
-from textual.message import Message
-from textual.reactive import reactive
-from textual.screen import ModalScreen
-from textual.strip import Strip
-from textual.widget import Widget
-from textual.widgets import Button, Footer, Header, Input, Label, Static
+from textual.css.stylesheet import CssSource
+from textual.screen import ModalScreen, Screen
+from textual.widgets import Input, Label, Static
 
-# ---------------------------------------------------------------------------
-# Database & Persistence Layer
-# ---------------------------------------------------------------------------
+from lifeos_theme import (
+    Animator,
+    Capabilities,
+    Theme,
+    blank_canvas,
+    blit,
+    canvas_text,
+    ease_out_cubic,
+    get_theme,
+    resolve_startup_theme,
+    sparkline,
+)
 
-DB_DIR = Path.home() / ".lifeos"
-DB_PATH = DB_DIR / "daily.db"
 
+# ===========================================================================
+# Domain Models & SQLite Persistence Layer
+# ===========================================================================
 
 @dataclass
-class RoutineTask:
+class Task:
     id: int
     title: str
-    position: int
-    active: int
-    created_at: str
+    sort_order: int
+    created_at: str = ""
 
 
 @dataclass
-class CompletionStatus:
+class Completion:
     task_id: int
+    date: str
     done: bool
-    completed_at: Optional[str]
+
+
+DEFAULT_ROUTINES = [
+    "Morning sunlight + Hydration (500ml)",
+    "Deep focus session (90 mins)",
+    "Zone 2 Cardio or Strength workout",
+    "Read 15 pages of non-fiction",
+    "Nightly shutdown & tomorrow plan",
+]
 
 
 class DatabaseManager:
-    """Robust SQLite persistence layer for lifeOS Daily."""
+    """Byte-identical SQLite storage schema at ~/.lifeos/daily.db."""
 
-    def __init__(self, db_path: Path = DB_PATH):
-        self.db_path = db_path
-        self._ensure_initialized()
+    def __init__(self, db_path: Optional[Path] = None):
+        if db_path is None:
+            config_dir = Path.home() / ".lifeos"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            self.db_path = config_dir / "daily.db"
+        else:
+            self.db_path = Path(db_path)
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
 
-    @contextmanager
-    def _conn(self) -> Generator[sqlite3.Connection, None, None]:
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=10.0)
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        return conn
 
-    def _ensure_initialized(self) -> None:
-        with self._conn() as conn:
+    def _init_db(self) -> None:
+        with self._get_conn() as conn:
+            conn.execute("PRAGMA foreign_keys = ON")
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS routine_tasks (
+                CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
-                    position INTEGER NOT NULL,
-                    active INTEGER NOT NULL DEFAULT 1,
-                    created_at TEXT NOT NULL
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
@@ -95,1198 +104,917 @@ class DatabaseManager:
                     task_id INTEGER NOT NULL,
                     date TEXT NOT NULL,
                     done INTEGER NOT NULL DEFAULT 0,
-                    completed_at TEXT,
                     PRIMARY KEY (task_id, date),
-                    FOREIGN KEY (task_id) REFERENCES routine_tasks(id) ON DELETE CASCADE
+                    FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE
                 )
                 """
             )
-            # Create indexing for rapid date/streak lookups
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_completions_date ON completions(date)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_routine_position ON routine_tasks(position)"
-            )
-
-            # Auto-seed initial tasks if the table is freshly created and empty
-            cur = conn.execute("SELECT COUNT(*) as count FROM routine_tasks")
-            if cur.fetchone()["count"] == 0:
-                seed_tasks = [
-                    "Morning sunlight & hydration",
-                    "Deep Work — 90 min focused sprint",
-                    "Gym / Zone 2 cardio session",
-                    "Read 20 pages (non-fiction)",
-                    "Evening retrospective & journal",
-                ]
-                now = datetime.datetime.now().isoformat()
-                for i, title in enumerate(seed_tasks):
+            cur = conn.execute("SELECT COUNT(*) FROM tasks")
+            if cur.fetchone()[0] == 0:
+                for idx, title in enumerate(DEFAULT_ROUTINES):
                     conn.execute(
-                        "INSERT INTO routine_tasks (title, position, active, created_at) VALUES (?, ?, 1, ?)",
-                        (title, i, now),
+                        "INSERT INTO tasks (title, sort_order) VALUES (?, ?)",
+                        (title, idx),
                     )
+            conn.commit()
 
-    def get_tasks(self) -> List[RoutineTask]:
-        with self._conn() as conn:
+    def get_tasks(self) -> List[Task]:
+        with self._get_conn() as conn:
             cur = conn.execute(
-                "SELECT id, title, position, active, created_at FROM routine_tasks WHERE active = 1 ORDER BY position ASC, id ASC"
+                "SELECT id, title, sort_order, created_at FROM tasks ORDER BY sort_order ASC, id ASC"
             )
             return [
-                RoutineTask(
+                Task(
                     id=row["id"],
                     title=row["title"],
-                    position=row["position"],
-                    active=row["active"],
-                    created_at=row["created_at"],
+                    sort_order=row["sort_order"],
+                    created_at=str(row["created_at"]),
                 )
                 for row in cur.fetchall()
             ]
 
-    def add_task(self, title: str) -> RoutineTask:
-        clean_title = title.strip()
-        if not clean_title:
-            raise ValueError("Task title cannot be empty")
-        now = datetime.datetime.now().isoformat()
-        with self._conn() as conn:
-            cur = conn.execute("SELECT MAX(position) as max_pos FROM routine_tasks")
-            row = cur.fetchone()
-            next_pos = (row["max_pos"] + 1) if (row and row["max_pos"] is not None) else 0
+    def add_task(self, title: str) -> Task:
+        title = title.strip()
+        if not title:
+            title = "Untitled Routine"
+        with self._get_conn() as conn:
+            cur = conn.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM tasks")
+            next_order = cur.fetchone()[0]
             cur = conn.execute(
-                "INSERT INTO routine_tasks (title, position, active, created_at) VALUES (?, ?, 1, ?)",
-                (clean_title, next_pos, now),
+                "INSERT INTO tasks (title, sort_order) VALUES (?, ?)",
+                (title, next_order),
             )
+            conn.commit()
             task_id = cur.lastrowid
-            return RoutineTask(
-                id=task_id,
-                title=clean_title,
-                position=next_pos,
-                active=1,
-                created_at=now,
-            )
+            return Task(id=task_id, title=title, sort_order=next_order)
 
-    def update_task_title(self, task_id: int, new_title: str) -> None:
-        clean_title = new_title.strip()
-        if not clean_title:
-            raise ValueError("Task title cannot be empty")
-        with self._conn() as conn:
-            conn.execute(
-                "UPDATE routine_tasks SET title = ? WHERE id = ?",
-                (clean_title, task_id),
-            )
+    def update_task_title(self, task_id: int, title: str) -> None:
+        title = title.strip()
+        if not title:
+            return
+        with self._get_conn() as conn:
+            conn.execute("UPDATE tasks SET title = ? WHERE id = ?", (title, task_id))
+            conn.commit()
 
     def delete_task(self, task_id: int) -> None:
-        with self._conn() as conn:
-            conn.execute("DELETE FROM routine_tasks WHERE id = ?", (task_id,))
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM completions WHERE task_id = ?", (task_id,))
+            conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            # Normalize sort order
+            cur = conn.execute("SELECT id FROM tasks ORDER BY sort_order ASC, id ASC")
+            rows = cur.fetchall()
+            for idx, r in enumerate(rows):
+                conn.execute("UPDATE tasks SET sort_order = ? WHERE id = ?", (idx, r["id"]))
+            conn.commit()
 
     def reorder_task(self, task_id: int, direction: int) -> None:
-        """direction: -1 for UP, +1 for DOWN"""
         tasks = self.get_tasks()
-        idx = next((i for i, t in enumerate(tasks) if t.id == task_id), -1)
-        if idx == -1:
+        idx = next((i for i, t in enumerate(tasks) if t.id == task_id), None)
+        if idx is None:
             return
         target_idx = idx + direction
-        if target_idx < 0 or target_idx >= len(tasks):
-            return
+        if 0 <= target_idx < len(tasks):
+            tasks[idx], tasks[target_idx] = tasks[target_idx], tasks[idx]
+            with self._get_conn() as conn:
+                for i, t in enumerate(tasks):
+                    conn.execute("UPDATE tasks SET sort_order = ? WHERE id = ?", (i, t.id))
+                conn.commit()
 
-        # Swap in list and update positions in DB
-        tasks[idx], tasks[target_idx] = tasks[target_idx], tasks[idx]
-        with self._conn() as conn:
-            for i, t in enumerate(tasks):
-                conn.execute(
-                    "UPDATE routine_tasks SET position = ? WHERE id = ?",
-                    (i, t.id),
-                )
-
-    def get_day_completions(self, date_str: str) -> dict[int, CompletionStatus]:
-        with self._conn() as conn:
+    def get_day_completions(self, date_str: str) -> Dict[int, Completion]:
+        with self._get_conn() as conn:
             cur = conn.execute(
-                "SELECT task_id, done, completed_at FROM completions WHERE date = ?",
+                "SELECT task_id, date, done FROM completions WHERE date = ?",
                 (date_str,),
             )
-            res = {}
-            for row in cur.fetchall():
-                res[row["task_id"]] = CompletionStatus(
+            return {
+                row["task_id"]: Completion(
                     task_id=row["task_id"],
+                    date=row["date"],
                     done=bool(row["done"]),
-                    completed_at=row["completed_at"],
                 )
-            return res
+                for row in cur.fetchall()
+            }
 
     def toggle_completion(self, task_id: int, date_str: str) -> bool:
-        """Toggles the completion state for a given task and date. Returns new state."""
-        with self._conn() as conn:
+        with self._get_conn() as conn:
             cur = conn.execute(
                 "SELECT done FROM completions WHERE task_id = ? AND date = ?",
                 (task_id, date_str),
             )
             row = cur.fetchone()
-            new_done = 1
+            new_state = 1
             if row is not None:
-                new_done = 0 if row["done"] == 1 else 1
+                new_state = 0 if row["done"] else 1
+                conn.execute(
+                    "UPDATE completions SET done = ? WHERE task_id = ? AND date = ?",
+                    (new_state, task_id, date_str),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO completions (task_id, date, done) VALUES (?, ?, 1)",
+                    (task_id, date_str),
+                )
+            conn.commit()
+            return bool(new_state)
 
-            completed_at = datetime.datetime.now().isoformat() if new_done else None
-            conn.execute(
-                """
-                INSERT INTO completions (task_id, date, done, completed_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(task_id, date) DO UPDATE SET
-                    done = excluded.done,
-                    completed_at = excluded.completed_at
-                """,
-                (task_id, date_str, new_done, completed_at),
-            )
-            return bool(new_done)
+    def calculate_streak(self, as_of_date: Optional[datetime.date] = None) -> int:
+        if as_of_date is None:
+            as_of_date = datetime.date.today()
 
-    def get_month_completion_stats(
-        self, year: int, month: int
-    ) -> dict[str, Tuple[int, int]]:
-        """Returns map of YYYY-MM-DD -> (done_count, total_tasks_count)"""
+        tasks = self.get_tasks()
+        if not tasks:
+            return 0
+        total_tasks = len(tasks)
+
+        def is_day_complete(d: datetime.date) -> bool:
+            ds = d.strftime("%Y-%m-%d")
+            comps = self.get_day_completions(ds)
+            completed_count = sum(1 for t in tasks if comps.get(t.id, Completion(t.id, ds, False)).done)
+            return completed_count >= total_tasks
+
+        streak = 0
+        cur_day = as_of_date
+
+        if is_day_complete(cur_day):
+            streak += 1
+            cur_day -= datetime.timedelta(days=1)
+        else:
+            # If today is not done yet, check if yesterday was done to preserve streak
+            cur_day -= datetime.timedelta(days=1)
+
+        while is_day_complete(cur_day):
+            streak += 1
+            cur_day -= datetime.timedelta(days=1)
+
+        return streak
+
+    def get_month_completion_stats(self, year: int, month: int) -> Dict[str, Tuple[int, int]]:
         tasks = self.get_tasks()
         total_tasks = len(tasks)
         if total_tasks == 0:
             return {}
 
-        start_date = f"{year:04d}-{month:02d}-01"
-        last_day = calendar.monthrange(year, month)[1]
-        end_date = f"{year:04d}-{month:02d}-{last_day:02d}"
+        start_date = datetime.date(year, month, 1)
+        _, num_days = calendar.monthrange(year, month)
+        end_date = datetime.date(year, month, num_days)
 
-        with self._conn() as conn:
+        stats: Dict[str, Tuple[int, int]] = {}
+        with self._get_conn() as conn:
             cur = conn.execute(
                 """
-                SELECT date, SUM(done) as done_cnt
+                SELECT date, SUM(done) as done_count
                 FROM completions
-                WHERE date >= ? AND date <= ? AND task_id IN (SELECT id FROM routine_tasks WHERE active = 1)
+                WHERE date >= ? AND date <= ?
                 GROUP BY date
                 """,
-                (start_date, end_date),
+                (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")),
             )
-            res = {}
-            for row in cur.fetchall():
-                res[row["date"]] = (int(row["done_cnt"] or 0), total_tasks)
-            return res
+            done_map = {row["date"]: row["done_count"] for row in cur.fetchall()}
 
-    def calculate_streak(self, today_date: datetime.date) -> int:
-        """
-        Calculates consecutive streak of 100% completed days ending today or yesterday.
-        """
+        for day in range(1, num_days + 1):
+            d_str = datetime.date(year, month, day).strftime("%Y-%m-%d")
+            done_count = done_map.get(d_str, 0)
+            stats[d_str] = (min(done_count, total_tasks), total_tasks)
+
+        return stats
+
+    def get_past_7_days_fractions(self, current_date: datetime.date) -> List[float]:
         tasks = self.get_tasks()
-        total_tasks = len(tasks)
-        if total_tasks == 0:
-            return 0
-
-        streak = 0
-        current_check = today_date
-
-        with self._conn() as conn:
-            # Check today first
-            cur = conn.execute(
-                """
-                SELECT COUNT(*) as done_cnt FROM completions
-                WHERE date = ? AND done = 1 AND task_id IN (SELECT id FROM routine_tasks WHERE active = 1)
-                """,
-                (current_check.strftime("%Y-%m-%d"),),
-            )
-            today_done = cur.fetchone()["done_cnt"]
-            if today_done == total_tasks:
-                streak += 1
-                current_check -= datetime.timedelta(days=1)
-            else:
-                # If today isn't finished yet, streak can still be alive from yesterday!
-                current_check -= datetime.timedelta(days=1)
-
-            # Check consecutive backward days
-            while True:
-                d_str = current_check.strftime("%Y-%m-%d")
-                cur = conn.execute(
-                    """
-                    SELECT COUNT(*) as done_cnt FROM completions
-                    WHERE date = ? AND done = 1 AND task_id IN (SELECT id FROM routine_tasks WHERE active = 1)
-                    """,
-                    (d_str,),
-                )
-                day_done = cur.fetchone()["done_cnt"]
-                if day_done == total_tasks:
-                    streak += 1
-                    current_check -= datetime.timedelta(days=1)
-                else:
-                    break
-
-        return streak
+        total = len(tasks)
+        if total == 0:
+            return [0.0] * 7
+        fractions = []
+        for i in range(6, -1, -1):
+            day = current_date - datetime.timedelta(days=i)
+            day_str = day.strftime("%Y-%m-%d")
+            comps = self.get_day_completions(day_str)
+            done = sum(1 for t in tasks if comps.get(t.id, Completion(t.id, day_str, False)).done)
+            fractions.append(done / total)
+        return fractions
 
 
-# ---------------------------------------------------------------------------
-# UI Widgets & Custom Renderables
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Custom Crafted UI Components
+# ===========================================================================
 
-
-class TopBar(Widget):
-    """Refined futuristic lifeOS header with live date display and streak."""
-
-    viewed_date = reactive(datetime.date.today)
-    streak_count = reactive(0)
+class KeyChipBar(Static):
+    """Refined keyboard shortcuts hint bar styled as chips."""
 
     def render(self) -> Text:
-        today = datetime.date.today()
-        is_today = self.viewed_date == today
+        th: Theme = self.app.theme_obj
+        p = th.palette
+        g = th.glyphs
 
-        # Left logo
-        text = Text()
-        text.append(" ◆ ", style="bold #00E5FF")
-        text.append("lifeOS", style="bold #FFFFFF")
-        text.append(" daily", style="#64748B")
+        chips = [
+            ("↵", "Toggle"),
+            ("A", "Add"),
+            ("E", "Rename"),
+            ("D", "Delete"),
+            ("K/J", "Move"),
+            ("←/→", "Date"),
+            ("C", "Calendar"),
+            ("T", "Theme"),
+            ("Q", "Quit"),
+        ]
 
-        # Center formatted date
-        date_fmt = self.viewed_date.strftime("%a, %b %d")
-        if self.viewed_date.year != today.year:
-            date_fmt = self.viewed_date.strftime("%a, %b %d, %Y")
-
-        date_segment = Text()
-        date_segment.append(f"  {date_fmt}  ", style="bold #E2E8F0")
-        if is_today:
-            date_segment.append("— TODAY", style="bold #00F59B")
-        elif self.viewed_date > today:
-            date_segment.append("— FUTURE", style="#F59E0B")
-        else:
-            days_ago = (today - self.viewed_date).days
-            date_segment.append(f"— {days_ago}d ago", style="#64748B")
-
-        # Right streak
-        streak_seg = Text()
-        if self.streak_count > 0:
-            streak_seg.append(f"🔥 {self.streak_count} day streak", style="bold #FF7B00")
-        else:
-            streak_seg.append("⚡ 0 day streak", style="#64748B")
-        streak_seg.append(" ")
-
-        # Total layout assembly
-        total_width = max(self.size.width, 60)
-        left_len = text.cell_len
-        date_len = date_segment.cell_len
-        right_len = streak_seg.cell_len
-
-        spacing_left = max(2, (total_width - left_len - date_len - right_len) // 2)
-        spacing_right = max(2, total_width - left_len - right_len - date_len - spacing_left)
-
-        res = Text()
-        res.append_text(text)
-        res.append(" " * spacing_left)
-        res.append_text(date_segment)
-        res.append(" " * spacing_right)
-        res.append_text(streak_seg)
-        return res
-
-
-class DailyProgressBar(Widget):
-    """Custom aesthetic segmented progress bar with contextual color grade."""
-
-    done_count = reactive(0)
-    total_count = reactive(0)
-    celebrate_anim = reactive(False)
-
-    def render(self) -> Text:
         t = Text()
-        if self.total_count == 0:
-            t.append("  0/0 · 0%   No tasks defined", style="#475569")
-            return t
+        t.append(f" {g.squared} ", style=f"{p.accent}")
 
-        pct = int(round((self.done_count / self.total_count) * 100)) if self.total_count else 0
-        pct = max(0, min(100, pct))
-
-        bar_width = max(10, min(36, self.size.width - 28))
-        filled_chars = int(round((pct / 100.0) * bar_width))
-        empty_chars = bar_width - filled_chars
-
-        if pct == 100:
-            fill_style = "bold #00F59B"
-            num_style = "bold #00F59B"
-        elif pct >= 50:
-            fill_style = "bold #00E5FF"
-            num_style = "bold #00E5FF"
-        elif pct > 0:
-            fill_style = "bold #F59E0B"
-            num_style = "bold #F59E0B"
-        else:
-            fill_style = "#334155"
-            num_style = "#64748B"
-
-        t.append("  [", style="#334155")
-        t.append("█" * filled_chars, style=fill_style)
-        t.append("░" * empty_chars, style="#1E293B")
-        t.append("] ", style="#334155")
-
-        t.append(f"{self.done_count}/{self.total_count}", style=num_style)
-        t.append(" · ", style="#475569")
-        t.append(f"{pct}%", style=num_style)
-
-        if pct == 100:
-            t.append("  ✨ Daily Routine Completed! Stellar work.", style="bold #00F59B")
-        elif pct == 0:
-            t.append("  Focus in. Win the morning.", style="#64748B")
+        for i, (key, label) in enumerate(chips):
+            t.append("[", style=f"{p.line}")
+            t.append(key, style=f"bold {p.accent_hi}")
+            t.append("] ", style=f"{p.line}")
+            t.append(label, style=f"{p.text_dim}")
+            if i < len(chips) - 1:
+                t.append("  ", style=f"{p.line_soft}")
 
         return t
 
 
-class TaskItemRow(Widget):
-    """Interactive task row rendered with precision typography and micro-states."""
-
-    def __init__(
-        self,
-        task: RoutineTask,
-        done: bool,
-        is_selected: bool = False,
-        duplicate_num: int = 0,
-        flash_tick: bool = False,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.task = task
-        self.done = done
-        self.is_selected = is_selected
-        self.duplicate_num = duplicate_num
-        self.flash_tick = flash_tick
+class HeaderBar(Static):
+    """Header element: ASCII mark, viewed date, streak, and real-time clock."""
 
     def render(self) -> Text:
-        text = Text()
-        # Left margin padding
-        text.append("  ")
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
 
-        # Checkbox styling
-        if self.done:
-            if self.flash_tick:
-                text.append("● [✓] ", style="bold #FFFFFF on #00F59B")
-            else:
-                text.append("✓ ", style="bold #00F59B")
-        else:
-            text.append("○ ", style="#475569")
-
-        # Title formatting & duplicate numbering
-        title_display = self.task.title
-        if self.duplicate_num > 1:
-            title_display = f"{title_display} (#{self.duplicate_num})"
-
-        if self.done:
-            text.append(title_display, style="strike #64748B")
-        else:
-            if self.is_selected:
-                text.append(title_display, style="bold #FFFFFF")
-            else:
-                text.append(title_display, style="#CBD5E1")
-
-        return text
-
-
-class MonthCalendarWidget(Widget):
-    """
-    Compact keyboard navigable month calendar view with completion markers:
-    ● = 100% complete
-    ◐ = partial complete
-    · = 0% complete
-    (nothing for future dates)
-    """
-
-    cursor_date = reactive(datetime.date.today)
-    selected_date = reactive(datetime.date.today)
-
-    def __init__(self, db: DatabaseManager, **kwargs):
-        super().__init__(**kwargs)
-        self.db = db
-        self.stats: dict[str, Tuple[int, int]] = {}
-        self.refresh_stats()
-
-    def refresh_stats(self) -> None:
-        self.stats = self.db.get_month_completion_stats(
-            self.cursor_date.year, self.cursor_date.month
-        )
-        self.refresh()
-
-    def watch_cursor_date(self, old_date: datetime.date, new_date: datetime.date) -> None:
-        if old_date.year != new_date.year or old_date.month != new_date.month:
-            self.refresh_stats()
-        else:
-            self.refresh()
-
-    def render(self) -> Text:
+        w = self.size.width if self.size.width > 20 else 80
         t = Text()
+
+        # Logo mark
+        t.append(f"{g.logo} ", style=f"bold {p.accent_hi}")
+        t.append("lifeOS", style=f"bold {p.text_hi}")
+        t.append(" DAILY ", style=f"bold {p.accent}")
+        t.append(f"{g.line_v} ", style=f"{p.line}")
+
+        # Date string
+        view_date = app.current_date
+        is_today = view_date == datetime.date.today()
+        date_str = view_date.strftime("%A, %b %d, %Y")
+        tag = "TODAY" if is_today else ("PAST" if view_date < datetime.date.today() else "FUTURE")
+        tag_color = p.state_ok if is_today else (p.text_dim if view_date < datetime.date.today() else p.state_warn)
+
+        t.append(date_str, style=f"bold {p.text_hi}")
+        t.append(f" [{tag}] ", style=f"bold {tag_color}")
+
+        # Right side: Streak + Clock
+        streak_val = app.streak_count
+        flame_color = p.hot if streak_val > 0 else p.text_faint
+        now_time = datetime.datetime.now().strftime("%H:%M:%S")
+
+        right_side = Text()
+        right_side.append(f"{g.flame} ", style=f"bold {flame_color}")
+        right_side.append(f"{streak_val}d streak", style=f"bold {p.hot if streak_val > 0 else p.text_dim}")
+        right_side.append(f"  {g.line_v}  ", style=f"{p.line}")
+        right_side.append(now_time, style=f"bold {p.text_hi}")
+
+        left_len = len(t.plain)
+        right_len = len(right_side.plain)
+        pad = max(2, w - left_len - right_len - 2)
+
+        t.append(" " * pad)
+        t.append_text(right_side)
+
+        return t
+
+
+class HeroBanner(Static):
+    """Displays contextual status quote and identity."""
+
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
+
+        view_date = app.current_date
         today = datetime.date.today()
-        year = self.cursor_date.year
-        month = self.cursor_date.month
+        tasks = app.tasks
+        comps = app.completions
+        total = len(tasks)
+        done = sum(1 for t in tasks if comps.get(t.id, Completion(t.id, "", False)).done)
 
-        # Month Header
-        month_name = datetime.date(year, month, 1).strftime("%B %Y")
-        t.append(f"\n   ◀  {month_name.center(16)}  ▶\n\n", style="bold #00E5FF")
+        if view_date > today:
+            msg = th.messages.hero_future
+            sub = "Plan your intentions ahead. Read-only preview."
+            color = p.state_warn
+        elif view_date < today:
+            msg = th.messages.hero_history
+            pct = int((done / total * 100)) if total else 0
+            sub = f"Record archived. Completed {done}/{total} routines ({pct}%)."
+            color = p.text_dim
+        else:
+            if total == 0:
+                msg = th.messages.momentum_start
+                sub = "Press [A] to register your foundational daily habits."
+                color = p.accent
+            elif done == total:
+                msg = th.messages.hero_done
+                sub = "All daily rituals completed. Full discipline achieved today."
+                color = p.state_ok
+            elif done == 0:
+                msg = th.messages.hero_today
+                sub = f"{total} rituals waiting. First step sets the momentum."
+                color = p.accent
+            else:
+                msg = th.messages.hero_press_on
+                sub = f"{done} of {total} completed. Finish the remaining {total - done} to secure the day."
+                color = p.accent_hi
 
-        # Day headers
-        t.append("   MO  TU  WE  TH  FR  SA  SU\n", style="bold #64748B")
+        t = Text()
+        t.append(f" {g.spark} ", style=f"bold {color}")
+        t.append(f"{msg}\n", style=f"bold {p.text_hi}")
+        t.append(f"   {sub}", style=f"{p.text_dim}")
+        return t
 
-        cal = calendar.Calendar(firstweekday=0)
-        month_days = cal.monthdatescalendar(year, month)
 
-        for week in month_days:
-            line = Text("   ")
-            for day in week:
-                is_current_month = day.month == month
-                is_cursor = day == self.cursor_date
-                is_selected = day == self.selected_date
-                is_today = day == today
-                is_future = day > today
+class TaskListView(Static):
+    """Routine task items with interactive cursor and micro-animations."""
 
-                day_str = day.strftime("%Y-%m-%d")
-                stat = self.stats.get(day_str)
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
 
-                # Determine completion marker
-                marker = " "
-                marker_style = "#334155"
-                if is_current_month and not is_future and stat:
-                    done_cnt, total_cnt = stat
-                    if total_cnt > 0:
-                        if done_cnt == total_cnt:
-                            marker = "●"
-                            marker_style = "#00F59B"
-                        elif done_cnt > 0:
-                            marker = "◐"
-                            marker_style = "#00E5FF"
-                        else:
-                            marker = "·"
-                            marker_style = "#475569"
-                elif is_current_month and not is_future:
-                    marker = "·"
-                    marker_style = "#334155"
+        tasks = app.tasks
+        comps = app.completions
+        cursor = app.cursor_idx
+        w = max(40, self.size.width - 2)
 
-                day_num = f"{day.day:2d}"
+        if not tasks:
+            t = Text()
+            t.append("\n  No active routines.\n", style=f"bold {p.text_dim}")
+            t.append(f"  {g.spark} {th.messages.empty_invite} [A]\n", style=f"{p.accent}")
+            return t
 
-                if not is_current_month:
-                    line.append(f"{day_num} ", style="#1E293B")
-                elif is_cursor:
-                    line.append(f"{day_num}", style="bold #0A0E14 on #00E5FF")
-                    line.append(f"{marker}", style=marker_style)
-                elif is_selected:
-                    line.append(f"{day_num}", style="bold #0A0E14 on #00F59B")
-                    line.append(f"{marker}", style=marker_style)
-                elif is_today:
-                    line.append(f"{day_num}", style="bold underline #00F59B")
-                    line.append(f"{marker}", style=marker_style)
-                else:
-                    line.append(f"{day_num}", style="#94A3B8")
-                    line.append(f"{marker}", style=marker_style)
+        t = Text()
+        for idx, task in enumerate(tasks):
+            is_selected = (idx == cursor)
+            is_done = comps.get(task.id, Completion(task.id, "", False)).done
 
-                line.append(" ")
+            # Prefix indicator
+            if is_selected:
+                prefix = f" {g.w_right} "
+                prefix_style = f"bold {p.accent_hi}"
+                bg_style = f"on {p.band_hot}" if p.band_hot and th.caps.colorful else ""
+            else:
+                prefix = "   "
+                prefix_style = f"{p.text_faint}"
+                bg_style = ""
+
+            # Checkbox
+            if is_done:
+                check_icon = f"[{g.check}]"
+                check_style = f"bold {p.state_ok}"
+                title_style = f"{p.text_dim}"
+            else:
+                check_icon = f"[{g.open_box}]"
+                check_style = f"bold {p.accent}" if is_selected else f"{p.text_faint}"
+                title_style = f"bold {p.text_hi}" if is_selected else f"{p.text}"
+
+            # Flash animation if recently toggled
+            if app.flash_task_id == task.id:
+                check_icon = f"[{g.check_flash}]"
+                check_style = f"bold {p.accent_hi}"
+                title_style = f"bold {p.accent_hi}"
+
+            line = Text()
+            line.append(prefix, style=prefix_style)
+            line.append(check_icon, style=check_style)
+            line.append(" ")
+            line.append(f"{idx + 1:2d}. ", style=f"{p.text_faint}")
+            line.append(task.title, style=title_style)
+
+            # Pad remaining row width
+            plain_len = len(line.plain)
+            if plain_len < w:
+                line.append(" " * (w - plain_len))
+
+            if bg_style:
+                line.stylize(bg_style)
+
             t.append_text(line)
             t.append("\n")
 
-        # Legend
-        t.append("\n  ● 100%   ◐ Partial   · None\n", style="#475569")
-        t.append("  [Arrows] Move  [Enter] Select\n", style="#334155")
         return t
 
 
-# ---------------------------------------------------------------------------
-# Modal Dialogs with Clean Keyboard Traps & Error Validation
-# ---------------------------------------------------------------------------
+class MonthCalendarView(Static):
+    """Compact month calendar with historical completion semaphores."""
+
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
+
+        cal_date = app.cal_focus_date
+        year, month = cal_date.year, cal_date.month
+        month_name = calendar.month_name[month]
+        stats = app.month_stats
+
+        t = Text()
+        # Header
+        t.append(f"  {g.spark} {month_name} {year}\n", style=f"bold {p.accent_hi}")
+        t.append("  Mo  Tu  We  Th  Fr  Sa  Su\n", style=f"{p.text_faint}")
+
+        month_matrix = calendar.monthcalendar(year, month)
+        today = datetime.date.today()
+        current = app.current_date
+
+        for week in month_matrix:
+            row = Text("  ")
+            for day in week:
+                if day == 0:
+                    row.append("    ")
+                else:
+                    d_obj = datetime.date(year, month, day)
+                    d_str = d_obj.strftime("%Y-%m-%d")
+                    done_c, total_c = stats.get(d_str, (0, 0))
+
+                    if total_c > 0 and done_c >= total_c:
+                        marker = g.done
+                        marker_color = p.state_ok
+                    elif done_c > 0:
+                        marker = g.partial
+                        marker_color = p.state_warn
+                    else:
+                        marker = " "
+                        marker_color = p.text_faint
+
+                    day_str = f"{day:2d}"
+                    is_viewed = (d_obj == current)
+                    is_real_today = (d_obj == today)
+
+                    if is_viewed:
+                        row.append(day_str, style=f"bold {p.on_accent} on {p.accent}")
+                    elif is_real_today:
+                        row.append(day_str, style=f"bold underline {p.accent_hi}")
+                    else:
+                        row.append(day_str, style=f"{p.text}")
+
+                    row.append(marker, style=f"bold {marker_color}")
+                    row.append(" ")
+            t.append_text(row)
+            t.append("\n")
+
+        # Legend
+        t.append("\n  ", style="")
+        t.append(f"{g.done} Complete  ", style=f"{p.state_ok}")
+        t.append(f"{g.partial} Partial  ", style=f"{p.state_warn}")
+        t.append(f"{g.empty} None", style=f"{p.text_faint}")
+        return t
 
 
-class TaskInputDialog(ModalScreen[Optional[str]]):
-    """Keyboard-first clean modal for Adding and Inline Renaming tasks."""
+class MomentumDock(Static):
+    """Data-viz dock: Animated Braille/Segmented progress bar and sparkline."""
+
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
+
+        tasks = app.tasks
+        comps = app.completions
+        total = len(tasks)
+        done = sum(1 for t in tasks if comps.get(t.id, Completion(t.id, "", False)).done)
+        target_fraction = (done / total) if total > 0 else 0.0
+
+        current_anim_fraction = app.anim_progress
+        w = max(20, self.size.width - 24)
+
+        # 7-day sparkline
+        spark_vals = app.sparkline_data
+        spark_chars = sparkline(g, spark_vals)
+        spark_str = "".join(spark_chars)
+
+        # Build Progress Bar
+        fill_width = int(round(current_anim_fraction * w))
+        fill_width = max(0, min(w, fill_width))
+        empty_width = max(0, w - fill_width)
+
+        bar_body = g.bar_full * fill_width
+        empty_body = g.bar_track * empty_width
+
+        pct_num = int(round(current_anim_fraction * 100))
+
+        t = Text()
+        # Line 1: Header + Sparkline
+        t.append(f" {g.bolt} MOMENTUM ", style=f"bold {p.accent}")
+        t.append(f"{done}/{total} Complete ({pct_num}%)", style=f"bold {p.text_hi}")
+        t.append(f"    7D TREND: ", style=f"{p.text_faint}")
+        t.append(f"[{spark_str}]", style=f"bold {p.state_ok}")
+        t.append("\n")
+
+        # Line 2: The Visual Bar
+        t.append(" ", style="")
+        t.append(g.bar_left, style=f"bold {p.accent}")
+        t.append(bar_body, style=f"bold {p.accent}")
+        t.append(empty_body, style=f"{p.line}")
+        t.append(f" {pct_num:>3d}%\n", style=f"bold {p.accent_hi}")
+
+        # Line 3: Dynamic Micro-copy
+        if total == 0:
+            m_copy = th.messages.momentum_start
+        elif done == total:
+            m_copy = th.messages.momentum_done
+        elif done == total - 1:
+            m_copy = th.messages.momentum_final
+        elif done == 0:
+            m_copy = th.messages.momentum_start
+        elif done == 1:
+            m_copy = th.messages.momentum_open
+        elif done >= total // 2:
+            m_copy = th.messages.momentum_close.format(n=total - done)
+        else:
+            m_copy = th.messages.momentum_mid
+
+        t.append(f"  {g.spark} {m_copy}", style=f"{p.text_dim}")
+
+        return t
+
+
+class ToastRail(Static):
+    """Dynamic ephemeral feedback message."""
+
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
+
+        msg = app.toast_message
+        if not msg:
+            return Text()
+        t = Text()
+        t.append(f" {g.spark} ", style=f"bold {p.accent_hi}")
+        t.append(msg, style=f"bold {p.text_hi}")
+        return t
+
+
+# ===========================================================================
+# Modals for Routine Add / Rename
+# ===========================================================================
+
+class TextInputModal(ModalScreen[Optional[str]]):
+    """Clean minimal modal for Add/Edit operations."""
 
     DEFAULT_CSS = """
-    TaskInputDialog {
+    TextInputModal {
         align: center middle;
-        background: rgba(10, 14, 20, 0.85);
+        background: rgba(0, 0, 0, 0.7);
     }
-    #dialog_box {
-        width: 54;
+    #modal_box {
+        width: 60;
         height: auto;
-        border: round #00E5FF;
-        background: #0D121B;
         padding: 1 2;
+        border: round cyan;
+        background: #0F141D;
     }
-    #dialog_title {
-        text-style: bold;
-        color: #00E5FF;
+    #modal_prompt {
         margin-bottom: 1;
+        color: #F2F7FC;
+        text-style: bold;
     }
-    #dialog_error {
-        color: #EF4444;
-        margin-top: 1;
-        min-height: 1;
+    #modal_input {
+        width: 100%;
+        border: tall #1C2634;
+        background: #0A0D13;
+        color: #F2F7FC;
     }
-    #dialog_input {
-        border: tall #334155;
-        background: #0A0E14;
-        color: #FFFFFF;
-    }
-    #dialog_input:focus {
-        border: tall #00E5FF;
-    }
-    #hints {
-        color: #64748B;
-        margin-top: 1;
-        text-align: right;
+    #modal_input:focus {
+        border: tall #22D3EE;
     }
     """
 
-    def __init__(
-        self,
-        title: str,
-        initial_value: str = "",
-        placeholder: str = "Enter routine task title...",
-    ):
+    def __init__(self, prompt: str, initial: str = ""):
         super().__init__()
-        self.dialog_title_text = title
-        self.initial_value = initial_value
-        self.placeholder = placeholder
+        self.prompt_text = prompt
+        self.initial_text = initial
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="dialog_box"):
-            yield Label(self.dialog_title_text, id="dialog_title")
-            yield Input(
-                value=self.initial_value,
-                placeholder=self.placeholder,
-                id="dialog_input",
-            )
-            yield Label("", id="dialog_error")
-            yield Label("Enter to Confirm  ·  Esc to Cancel", id="hints")
+        with Vertical(id="modal_box"):
+            yield Label(self.prompt_text, id="modal_prompt")
+            yield Input(value=self.initial_text, id="modal_input")
 
     def on_mount(self) -> None:
         inp = self.query_one(Input)
         inp.focus()
-        inp.cursor_position = len(self.initial_value)
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        val = event.value.strip()
-        if not val:
-            self.query_one("#dialog_error", Label).update("Task title cannot be empty")
-            return
-        self.dismiss(val)
+    @on(Input.Submitted, "#modal_input")
+    def on_submit(self, event: Input.Submitted) -> None:
+        self.dismiss(event.value.strip())
 
     def on_key(self, event: events.Key) -> None:
         if event.key == "escape":
-            event.stop()
             self.dismiss(None)
 
 
-class ConfirmDeleteDialog(ModalScreen[bool]):
-    """Clean modal asking to confirm cascading task deletion."""
+# ===========================================================================
+# The Main Textual Application
+# ===========================================================================
 
-    DEFAULT_CSS = """
-    ConfirmDeleteDialog {
-        align: center middle;
-        background: rgba(10, 14, 20, 0.85);
-    }
-    #confirm_box {
-        width: 52;
-        height: auto;
-        border: round #EF4444;
-        background: #0D121B;
-        padding: 1 2;
-    }
-    #confirm_title {
-        text-style: bold;
-        color: #EF4444;
-        margin-bottom: 1;
-    }
-    #confirm_msg {
-        color: #CBD5E1;
-        margin-bottom: 1;
-    }
-    #confirm_buttons {
-        height: 3;
-        align: right middle;
-    }
-    Button {
-        margin-left: 1;
-    }
-    """
+class DailyOS(App):
+    """lifeOS Daily Tracker — Master Application."""
 
-    def __init__(self, task_title: str):
-        super().__init__()
-        self.task_title = task_title
-
-    def compose(self) -> ComposeResult:
-        with Vertical(id="confirm_box"):
-            yield Label("Delete Routine Task", id="confirm_title")
-            yield Label(
-                f"Are you sure you want to delete:\n'{self.task_title}'?\n\nThis will remove all completion history.",
-                id="confirm_msg",
-            )
-            with Horizontal(id="confirm_buttons"):
-                yield Button("Cancel (Esc)", id="btn_cancel", variant="default")
-                yield Button("Delete (Enter)", id="btn_delete", variant="error")
-
-    def on_mount(self) -> None:
-        self.query_one("#btn_delete", Button).focus()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "btn_delete":
-            self.dismiss(True)
-        else:
-            self.dismiss(False)
-
-    def on_key(self, event: events.Key) -> None:
-        if event.key in ("escape", "n"):
-            event.stop()
-            self.dismiss(False)
-        elif event.key in ("enter", "y"):
-            event.stop()
-            self.dismiss(True)
-
-
-# ---------------------------------------------------------------------------
-# Main Routine Checklist Component
-# ---------------------------------------------------------------------------
-
-
-class RoutineListWidget(Widget):
-    """
-    The heart of lifeOS daily: shows the routine tasks for the currently viewed date.
-    Keyboard navigation, instant reordering, animated check-off.
-    """
-
-    selected_index = reactive(0)
-    flash_index: Optional[int] = None
+    CSS = ""
 
     def __init__(
         self,
-        db: DatabaseManager,
-        viewed_date: datetime.date,
-        **kwargs,
+        db_path: Optional[Path] = None,
+        theme_name: Optional[str] = None,
     ):
-        super().__init__(**kwargs)
-        self.db = db
-        self.viewed_date = viewed_date
-        self.tasks: List[RoutineTask] = []
-        self.completions: dict[int, CompletionStatus] = {}
-        self.reload_data()
-
-    def reload_data(self) -> None:
-        self.tasks = self.db.get_tasks()
-        date_str = self.viewed_date.strftime("%Y-%m-%d")
-        self.completions = self.db.get_day_completions(date_str)
-        if self.selected_index >= len(self.tasks):
-            self.selected_index = max(0, len(self.tasks) - 1)
-        self.refresh()
-
-    def get_counts(self) -> Tuple[int, int]:
-        total = len(self.tasks)
-        done = sum(
-            1
-            for t in self.tasks
-            if self.completions.get(t.id) and self.completions[t.id].done
-        )
-        return done, total
-
-    def move_cursor(self, delta: int) -> None:
-        if not self.tasks:
-            return
-        new_idx = max(0, min(len(self.tasks) - 1, self.selected_index + delta))
-        if new_idx != self.selected_index:
-            self.selected_index = new_idx
-            self.refresh()
-
-    def render(self) -> Text:
-        t = Text()
-        if not self.tasks:
-            t.append("\n\n   ◆  No daily routine tasks yet.\n", style="bold #00E5FF")
-            t.append("      Press ", style="#64748B")
-            t.append("a", style="bold #00F59B")
-            t.append(" to add your first recurring task.\n\n", style="#64748B")
-            t.append(
-                "      Daily tasks repeat every single day automatically.",
-                style="#334155",
-            )
-            return t
-
-        # Calculate duplicate titles for clean numbering
-        title_counts: dict[str, int] = {}
-        title_occurrences: dict[int, int] = {}
-        for task in self.tasks:
-            title_counts[task.title] = title_counts.get(task.title, 0) + 1
-
-        seen_counts: dict[str, int] = {}
-        for task in self.tasks:
-            if title_counts[task.title] > 1:
-                seen_counts[task.title] = seen_counts.get(task.title, 0) + 1
-                title_occurrences[task.id] = seen_counts[task.title]
-            else:
-                title_occurrences[task.id] = 0
-
-        total_width = max(self.size.width, 40)
-        t.append("\n")
-
-        for idx, task in enumerate(self.tasks):
-            is_selected = idx == self.selected_index
-            comp = self.completions.get(task.id)
-            is_done = comp.done if comp else False
-            dup_num = title_occurrences.get(task.id, 0)
-            is_flash = idx == self.flash_index
-
-            row_text = Text()
-
-            # Selection bar
-            if is_selected:
-                row_text.append(" ▎", style="bold #00E5FF")
-            else:
-                row_text.append("  ", style="#0A0E14")
-
-            # Check indicator
-            if is_done:
-                if is_flash:
-                    row_text.append(" [✓] ", style="bold #0A0E14 on #00F59B")
-                else:
-                    row_text.append("  ✓  ", style="bold #00F59B")
-            else:
-                row_text.append("  ○  ", style="#475569")
-
-            # Title
-            title_str = task.title
-            if dup_num > 1:
-                title_str = f"{title_str} ({dup_num})"
-
-            max_title_len = max(10, total_width - 20)
-            if len(title_str) > max_title_len:
-                title_str = title_str[: max_title_len - 1] + "…"
-
-            if is_done:
-                row_text.append(title_str, style="strike #475569")
-            else:
-                if is_selected:
-                    row_text.append(title_str, style="bold #FFFFFF")
-                else:
-                    row_text.append(title_str, style="#CBD5E1")
-
-            # Completed timestamp indicator if available
-            if is_done and comp and comp.completed_at:
-                try:
-                    dt = datetime.datetime.fromisoformat(comp.completed_at)
-                    time_str = dt.strftime("%H:%M")
-                    pad_len = max(
-                        2, total_width - row_text.cell_len - len(time_str) - 4
-                    )
-                    row_text.append(" " * pad_len)
-                    row_text.append(time_str, style="#334155")
-                except Exception:
-                    pass
-
-            # Wrap in soft background band for selected row
-            if is_selected:
-                row_styled = Text()
-                # Pad row to panel width for glowing band feel
-                row_len = row_text.cell_len
-                pad_tail = max(0, total_width - row_len - 2)
-                row_text.append(" " * pad_tail)
-                row_text.stylize(Style(bgcolor="#131B26"), 0, len(row_text))
-                t.append_text(row_text)
-            else:
-                t.append_text(row_text)
-
-            t.append("\n\n")
-
-        return t
-
-
-# ---------------------------------------------------------------------------
-# Main Application Screen
-# ---------------------------------------------------------------------------
-
-
-class DailyOS(App):
-    """lifeOS Daily — Master Keyboard-First Daily Routine Terminal App."""
-
-    CSS = """
-    Screen {
-        background: #0A0E14;
-        color: #E2E8F0;
-        layout: vertical;
-    }
-
-    #header_container {
-        height: 3;
-        background: #0D121B;
-        border-bottom: solid #1E293B;
-        padding: 0 1;
-    }
-
-    #main_body {
-        height: 1fr;
-        layout: horizontal;
-    }
-
-    #checklist_container {
-        width: 1fr;
-        height: 1fr;
-        border-right: solid #1E293B;
-        padding: 0 1;
-        layout: vertical;
-    }
-
-    #routine_list {
-        height: 1fr;
-    }
-
-    #progress_dock {
-        height: 3;
-        border-top: solid #1E293B;
-        background: #0D121B;
-        padding: 0 1;
-    }
-
-    #calendar_container {
-        width: 38;
-        height: 1fr;
-        background: #0A0E14;
-        padding: 0 1;
-    }
-
-    #calendar_container.hidden {
-        display: none;
-    }
-
-    #flash_notification {
-        height: 1;
-        background: #00E5FF;
-        color: #0A0E14;
-        text-style: bold;
-        text-align: center;
-        display: none;
-    }
-
-    #min_size_notice {
-        display: none;
-        background: #0A0E14;
-        color: #F59E0B;
-        text-align: center;
-        padding: 2;
-        text-style: bold;
-    }
-
-    Footer {
-        background: #0D121B;
-        color: #64748B;
-        border-top: solid #1E293B;
-    }
-    """
-
-    BINDINGS = [
-        Binding("space", "toggle_task", "Toggle", show=True),
-        Binding("enter", "toggle_task", "Toggle", show=False),
-        Binding("a", "add_task", "Add", show=True),
-        Binding("e", "edit_task", "Rename", show=True),
-        Binding("d", "delete_task", "Delete", show=True),
-        Binding("k", "move_up", "Up", show=False),
-        Binding("j", "move_down", "Down", show=False),
-        Binding("up", "move_up", "Up", show=False),
-        Binding("down", "move_down", "Down", show=False),
-        Binding("K", "reorder_up", "Shift Up", show=False),
-        Binding("J", "reorder_down", "Shift Down", show=False),
-        Binding("ctrl+up", "reorder_up", "Reorder ↑", show=False),
-        Binding("ctrl+down", "reorder_down", "Reorder ↓", show=False),
-        Binding("left", "prev_day", "◀ Day", show=True),
-        Binding("h", "prev_day", "◀ Day", show=False),
-        Binding("right", "next_day", "Day ▶", show=True),
-        Binding("l", "next_day", "Day ▶", show=False),
-        Binding("t", "jump_today", "Today", show=True),
-        Binding("c", "toggle_calendar", "Calendar", show=True),
-        Binding("q", "quit_app", "Quit", show=True),
-        Binding("escape", "escape_action", "Back/Esc", show=False),
-    ]
-
-    viewed_date = reactive(datetime.date.today())
-    calendar_mode = reactive(False)
-    calendar_active_focus = reactive(False)
-
-    def __init__(self, db_path: Path = DB_PATH):
         super().__init__()
+        self.caps = Capabilities()
+        self.theme_name = theme_name or "lifeos"
+        self.theme_obj = resolve_startup_theme(self.theme_name, self.caps)
+        self.CSS = self.theme_obj.css
+
         self.db = DatabaseManager(db_path)
-        self.last_checked_date = datetime.date.today()
+        self.current_date = datetime.date.today()
+        self.cal_focus_date = datetime.date.today()
+
+        self.tasks: List[Task] = []
+        self.completions: Dict[int, Completion] = {}
+        self.streak_count: int = 0
+        self.month_stats: Dict[str, Tuple[int, int]] = {}
+        self.sparkline_data: List[float] = [0.0] * 7
+
+        self.cursor_idx: int = 0
+        self.toast_message: str = ""
+        self.toast_timer = None
+
+        self.anim_progress: float = 0.0
+        self.target_progress: float = 0.0
+        self.flash_task_id: Optional[int] = None
+
+        self.ui_animator = Animator(self, tick=0.033)
+
+    def get_css(self) -> str:
+        return self.theme_obj.css
 
     def compose(self) -> ComposeResult:
-        with Container(id="header_container"):
-            yield TopBar(id="top_bar")
-
-        yield Label("", id="flash_notification")
-
-        with Horizontal(id="main_body"):
-            with Vertical(id="checklist_container"):
-                yield RoutineListWidget(
-                    db=self.db,
-                    viewed_date=self.viewed_date,
-                    id="routine_list",
-                )
-                yield DailyProgressBar(id="progress_dock")
-
-            with Vertical(id="calendar_container"):
-                yield MonthCalendarWidget(db=self.db, id="month_calendar")
-
-        with Container(id="min_size_notice"):
-            yield Static(
-                "Terminal too small.\nPlease resize to at least 50×15 for lifeOS Daily.",
-            )
-
-        yield Footer()
+        with Vertical():
+            yield HeaderBar(id="topbar")
+            yield HeroBanner(id="hero_panel")
+            with Horizontal(id="main_content"):
+                yield TaskListView(id="routine_list")
+                with Vertical(id="calendar_container"):
+                    yield MonthCalendarView(id="cal_panel")
+            yield MomentumDock(id="dock_panel")
+            yield ToastRail(id="toast")
+            yield KeyChipBar(id="footer")
 
     def on_mount(self) -> None:
-        self.title = "lifeOS Daily"
-        self._update_all_views()
-        # Set tick interval to check for day rollovers at midnight
-        self.set_interval(1.0, self._check_midnight_rollover)
+        self.refresh_data()
+        self.ui_animator.start()
+        # Set real-time clock tick
+        self.set_interval(1.0, self._clock_tick)
+        # Start smooth progress animation
+        self.animate_progress_bar()
 
-    def on_resize(self, event: events.Resize) -> None:
-        min_notice = self.query_one("#min_size_notice")
-        main_body = self.query_one("#main_body")
-        hdr = self.query_one("#header_container")
-        if event.size.width < 50 or event.size.height < 15:
-            min_notice.styles.display = "block"
-            main_body.styles.display = "none"
-            hdr.styles.display = "none"
+    def _clock_tick(self) -> None:
+        try:
+            self.query_one(HeaderBar).refresh()
+        except Exception:
+            pass
+
+    def refresh_data(self) -> None:
+        self.tasks = self.db.get_tasks()
+        date_str = self.current_date.strftime("%Y-%m-%d")
+        self.completions = self.db.get_day_completions(date_str)
+        self.streak_count = self.db.calculate_streak(self.current_date)
+        self.month_stats = self.db.get_month_completion_stats(
+            self.cal_focus_date.year, self.cal_focus_date.month
+        )
+        self.sparkline_data = self.db.get_past_7_days_fractions(self.current_date)
+
+        if self.tasks:
+            self.cursor_idx = max(0, min(len(self.tasks) - 1, self.cursor_idx))
         else:
-            min_notice.styles.display = "none"
-            main_body.styles.display = "block"
-            hdr.styles.display = "block"
+            self.cursor_idx = 0
 
-    def _check_midnight_rollover(self) -> None:
-        now_today = datetime.date.today()
-        if now_today != self.last_checked_date:
-            was_viewing_today = self.viewed_date == self.last_checked_date
-            self.last_checked_date = now_today
-            if was_viewing_today:
-                self.viewed_date = now_today
-                self.flash_message("Midnight reached — Rolled over to new day")
-            self._update_all_views()
+        # Update target progress
+        total = len(self.tasks)
+        done = sum(1 for t in self.tasks if self.completions.get(t.id, Completion(t.id, "", False)).done)
+        self.target_progress = (done / total) if total > 0 else 0.0
 
-    def flash_message(self, message: str, is_error: bool = False) -> None:
-        lbl = self.query_one("#flash_notification", Label)
-        lbl.update(f" {message} ")
-        if is_error:
-            lbl.styles.background = "#EF4444"
-            lbl.styles.color = "#FFFFFF"
-        else:
-            lbl.styles.background = "#00E5FF"
-            lbl.styles.color = "#0A0E14"
-        lbl.styles.display = "block"
-        self.set_timer(2.2, self._clear_flash)
+        if self.caps.reduced_motion:
+            self.anim_progress = self.target_progress
+
+        self._refresh_all_widgets()
+
+    def _refresh_all_widgets(self) -> None:
+        for selector in [HeaderBar, HeroBanner, TaskListView, MonthCalendarView, MomentumDock, ToastRail]:
+            try:
+                self.query_one(selector).refresh()
+            except Exception:
+                pass
+
+    def set_toast(self, message: str) -> None:
+        self.toast_message = message
+        try:
+            self.query_one(ToastRail).refresh()
+        except Exception:
+            pass
+
+    def animate_progress_bar(self) -> None:
+        if self.caps.reduced_motion:
+            self.anim_progress = self.target_progress
+            try:
+                self.query_one(MomentumDock).refresh()
+            except Exception:
+                pass
+            return
+
+        start_val = self.anim_progress
+        target_val = self.target_progress
+
+        def on_frame(f: int):
+            t = f / 18.0
+            eased = ease_out_cubic(t)
+            self.anim_progress = start_val + (target_val - start_val) * eased
+            try:
+                self.query_one(MomentumDock).refresh()
+            except Exception:
+                pass
+
+        def on_done():
+            self.anim_progress = target_val
+            try:
+                self.query_one(MomentumDock).refresh()
+            except Exception:
+                pass
+
+        self.ui_animator.play("bar_anim", 18, on_frame=on_frame, on_done=on_done)
+
+    # -----------------------------------------------------------------------
+    # Keyboard Navigation and CRUD Actions
+    # -----------------------------------------------------------------------
+
+    def on_key(self, event: events.Key) -> None:
+        k = event.key.lower()
+
+        # Navigation: Routine list
+        if k in ("up", "k"):
+            if self.tasks:
+                self.cursor_idx = (self.cursor_idx - 1) % len(self.tasks)
+                self.query_one(TaskListView).refresh()
+        elif k in ("down", "j"):
+            if self.tasks:
+                self.cursor_idx = (self.cursor_idx + 1) % len(self.tasks)
+                self.query_one(TaskListView).refresh()
+
+        # Toggle completion
+        elif event.key in ("space", "enter"):
+            if self.tasks:
+                curr_task = self.tasks[self.cursor_idx]
+                d_str = self.current_date.strftime("%Y-%m-%d")
+                new_state = self.db.toggle_completion(curr_task.id, d_str)
+                self.flash_task_id = curr_task.id
+                self.refresh_data()
+                self.animate_progress_bar()
+                self.set_toast(f"Routine '{curr_task.title}' {'completed!' if new_state else 'unmarked.'}")
+                self.set_timer(0.3, self._clear_flash)
+
+        # Date switching
+        elif k in ("left", "h"):
+            self.current_date -= datetime.timedelta(days=1)
+            self.cal_focus_date = self.current_date
+            self.refresh_data()
+            self.animate_progress_bar()
+            self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
+        elif k in ("right", "l"):
+            self.current_date += datetime.timedelta(days=1)
+            self.cal_focus_date = self.current_date
+            self.refresh_data()
+            self.animate_progress_bar()
+            self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
+        elif k in ("0", "today"):
+            self.current_date = datetime.date.today()
+            self.cal_focus_date = self.current_date
+            self.refresh_data()
+            self.animate_progress_bar()
+            self.set_toast("Returned to today")
+
+        # Reordering tasks
+        elif event.key in ("K", "["):
+            if self.tasks:
+                curr_task = self.tasks[self.cursor_idx]
+                self.db.reorder_task(curr_task.id, -1)
+                self.cursor_idx = max(0, self.cursor_idx - 1)
+                self.refresh_data()
+        elif event.key in ("J", "]"):
+            if self.tasks:
+                curr_task = self.tasks[self.cursor_idx]
+                self.db.reorder_task(curr_task.id, 1)
+                self.cursor_idx = min(len(self.tasks) - 1, self.cursor_idx + 1)
+                self.refresh_data()
+
+        # Add task
+        elif k == "a":
+            self.action_add_task()
+
+        # Rename task
+        elif k in ("e", "r"):
+            self.action_rename_task()
+
+        # Delete task
+        elif k in ("d", "x"):
+            self.action_delete_task()
+
+        # Cycle theme
+        elif event.key == "t" or event.key == "T":
+            self.action_cycle_theme()
+
+        # Toggle calendar view
+        elif k == "c":
+            cal_container = self.query_one("#calendar_container")
+            cal_container.toggle_class("hidden")
+
+        # Quit
+        elif k == "q":
+            self.exit()
 
     def _clear_flash(self) -> None:
-        lbl = self.query_one("#flash_notification", Label)
-        lbl.styles.display = "none"
-
-    def _update_all_views(self) -> None:
-        # Update header
-        top_bar = self.query_one(TopBar)
-        top_bar.viewed_date = self.viewed_date
-        top_bar.streak_count = self.db.calculate_streak(datetime.date.today())
-
-        # Update Routine Checklist
-        routine_list = self.query_one(RoutineListWidget)
-        routine_list.viewed_date = self.viewed_date
-        routine_list.reload_data()
-
-        # Update Progress Bar
-        done_cnt, tot_cnt = routine_list.get_counts()
-        prog = self.query_one(DailyProgressBar)
-        prog.done_count = done_cnt
-        prog.total_count = tot_cnt
-
-        # Update Calendar
-        cal = self.query_one(MonthCalendarWidget)
-        cal.selected_date = self.viewed_date
-        if not self.calendar_active_focus:
-            cal.cursor_date = self.viewed_date
-        cal.refresh_stats()
-
-    # -----------------------------------------------------------------------
-    # Action Handlers
-    # -----------------------------------------------------------------------
-
-    def action_toggle_task(self) -> None:
-        if self.calendar_active_focus:
-            # Enter in calendar mode selects the hovered date!
-            cal = self.query_one(MonthCalendarWidget)
-            self.viewed_date = cal.cursor_date
-            self.calendar_active_focus = False
-            self._update_all_views()
-            self.flash_message(f"Jumped to {self.viewed_date.strftime('%a, %b %d')}")
-            return
-
-        today = datetime.date.today()
-        if self.viewed_date > today:
-            self.flash_message("Cannot complete tasks in the future — Not yet!", is_error=True)
-            return
-
-        routine_list = self.query_one(RoutineListWidget)
-        if not routine_list.tasks:
-            self.flash_message("No tasks to toggle. Press 'a' to add one.", is_error=True)
-            return
-
-        curr_task = routine_list.tasks[routine_list.selected_index]
-        date_str = self.viewed_date.strftime("%Y-%m-%d")
-
-        # Perform atomic toggle
-        new_state = self.db.toggle_completion(curr_task.id, date_str)
-
-        # Micro-delight animation flash
-        routine_list.flash_index = routine_list.selected_index
-        self.set_timer(0.2, self._clear_tick_flash)
-
-        self._update_all_views()
-
-    def _clear_tick_flash(self) -> None:
-        routine_list = self.query_one(RoutineListWidget)
-        routine_list.flash_index = None
-        routine_list.refresh()
-
-    def action_move_up(self) -> None:
-        if self.calendar_active_focus:
-            cal = self.query_one(MonthCalendarWidget)
-            cal.cursor_date -= datetime.timedelta(days=7)
-        else:
-            self.query_one(RoutineListWidget).move_cursor(-1)
-
-    def action_move_down(self) -> None:
-        if self.calendar_active_focus:
-            cal = self.query_one(MonthCalendarWidget)
-            cal.cursor_date += datetime.timedelta(days=7)
-        else:
-            self.query_one(RoutineListWidget).move_cursor(1)
-
-    def action_prev_day(self) -> None:
-        if self.calendar_active_focus:
-            cal = self.query_one(MonthCalendarWidget)
-            cal.cursor_date -= datetime.timedelta(days=1)
-        else:
-            self.viewed_date -= datetime.timedelta(days=1)
-            self._update_all_views()
-
-    def action_next_day(self) -> None:
-        if self.calendar_active_focus:
-            cal = self.query_one(MonthCalendarWidget)
-            cal.cursor_date += datetime.timedelta(days=1)
-        else:
-            self.viewed_date += datetime.timedelta(days=1)
-            self._update_all_views()
-
-    def action_jump_today(self) -> None:
-        self.viewed_date = datetime.date.today()
-        cal = self.query_one(MonthCalendarWidget)
-        cal.cursor_date = self.viewed_date
-        self.calendar_active_focus = False
-        self._update_all_views()
-        self.flash_message("Today")
-
-    def action_toggle_calendar(self) -> None:
-        cal_container = self.query_one("#calendar_container")
-        cal = self.query_one(MonthCalendarWidget)
-        if cal_container.has_class("hidden"):
-            cal_container.remove_class("hidden")
-            self.calendar_active_focus = True
-            cal.cursor_date = self.viewed_date
-            self.flash_message("Calendar focus active (Arrows to browse, Enter to pick)")
-        else:
-            if not self.calendar_active_focus:
-                self.calendar_active_focus = True
-                self.flash_message("Calendar focus active")
-            else:
-                self.calendar_active_focus = False
-                self.flash_message("Checklist focus active")
-
-    def action_reorder_up(self) -> None:
-        routine_list = self.query_one(RoutineListWidget)
-        if not routine_list.tasks or routine_list.selected_index <= 0:
-            return
-        curr_task = routine_list.tasks[routine_list.selected_index]
-        self.db.reorder_task(curr_task.id, -1)
-        self._update_all_views()
-        routine_list.selected_index = self._clamp_index(routine_list.selected_index - 1)
-
-    def action_reorder_down(self) -> None:
-        routine_list = self.query_one(RoutineListWidget)
-        if not routine_list.tasks or routine_list.selected_index >= len(routine_list.tasks) - 1:
-            return
-        curr_task = routine_list.tasks[routine_list.selected_index]
-        self.db.reorder_task(curr_task.id, +1)
-        self._update_all_views()
-        routine_list.selected_index = self._clamp_index(routine_list.selected_index + 1)
-
-    def _clamp_index(self, idx: int) -> int:
-        """Keep cursor within valid bounds after list mutation."""
-        n = len(self.query_one(RoutineListWidget).tasks)
-        return max(0, min(n - 1, idx))
+        self.flash_task_id = None
+        try:
+            self.query_one(TaskListView).refresh()
+        except Exception:
+            pass
 
     def action_add_task(self) -> None:
-        def on_task_added(title: Optional[str]) -> None:
+        def on_submit(title: Optional[str]):
             if title:
-                try:
-                    new_task = self.db.add_task(title)
-                    routine_list = self.query_one(RoutineListWidget)
-                    self._update_all_views()
-                    # Select newly added task at end
-                    routine_list.selected_index = len(routine_list.tasks) - 1
-                    self.flash_message(f"Added routine task: '{title}'")
-                except Exception as ex:
-                    self.flash_message(f"Error: {ex}", is_error=True)
+                new_task = self.db.add_task(title)
+                self.cursor_idx = len(self.tasks)
+                self.refresh_data()
+                self.animate_progress_bar()
+                self.set_toast(f"Added routine: '{title}'")
 
-        self.push_screen(
-            TaskInputDialog(title="Add Daily Routine Task"), on_task_added
-        )
+        self.push_screen(TextInputModal("Enter new daily ritual:"), on_submit)
 
-    def action_edit_task(self) -> None:
-        routine_list = self.query_one(RoutineListWidget)
-        if not routine_list.tasks:
-            self.flash_message("No tasks to rename", is_error=True)
+    def action_rename_task(self) -> None:
+        if not self.tasks:
             return
+        curr_task = self.tasks[self.cursor_idx]
 
-        curr_task = routine_list.tasks[routine_list.selected_index]
-
-        def on_task_edited(new_title: Optional[str]) -> None:
-            if new_title and new_title != curr_task.title:
-                try:
-                    self.db.update_task_title(curr_task.id, new_title)
-                    self._update_all_views()
-                    self.flash_message(f"Renamed to: '{new_title}'")
-                except Exception as ex:
-                    self.flash_message(f"Error: {ex}", is_error=True)
+        def on_submit(title: Optional[str]):
+            if title and title != curr_task.title:
+                self.db.update_task_title(curr_task.id, title)
+                self.refresh_data()
+                self.set_toast(f"Renamed ritual to: '{title}'")
 
         self.push_screen(
-            TaskInputDialog(
-                title="Rename Daily Task",
-                initial_value=curr_task.title,
-            ),
-            on_task_edited,
+            TextInputModal("Rename daily ritual:", initial=curr_task.title),
+            on_submit,
         )
 
     def action_delete_task(self) -> None:
-        routine_list = self.query_one(RoutineListWidget)
-        if not routine_list.tasks:
-            self.flash_message("No tasks to delete", is_error=True)
+        if not self.tasks:
             return
+        curr_task = self.tasks[self.cursor_idx]
+        self.db.delete_task(curr_task.id)
+        self.cursor_idx = max(0, min(len(self.tasks) - 2, self.cursor_idx))
+        self.refresh_data()
+        self.animate_progress_bar()
+        self.set_toast(f"Deleted ritual: '{curr_task.title}'")
 
-        curr_task = routine_list.tasks[routine_list.selected_index]
-
-        def on_delete_confirmed(confirmed: Optional[bool]) -> None:
-            if confirmed:
-                try:
-                    self.db.delete_task(curr_task.id)
-                    self._update_all_views()
-                    self.flash_message(f"Deleted task '{curr_task.title}'")
-                except Exception as ex:
-                    self.flash_message(f"Error: {ex}", is_error=True)
-
-        self.push_screen(ConfirmDeleteDialog(curr_task.title), on_delete_confirmed)
-
-    def action_escape_action(self) -> None:
-        if self.calendar_active_focus:
-            self.calendar_active_focus = False
-            self.flash_message("Checklist focus active")
-
-    def action_quit_app(self) -> None:
-        self.exit(0)
-
-
-# ---------------------------------------------------------------------------
-# Production Entry Point
-# ---------------------------------------------------------------------------
+    def action_cycle_theme(self) -> None:
+        themes = ["lifeos", "phosphor", "amber"]
+        next_idx = (themes.index(self.theme_name) + 1) % len(themes) if self.theme_name in themes else 0
+        self.theme_name = themes[next_idx]
+        self.theme_obj = get_theme(self.theme_name, self.caps)
+        for key in list(self.stylesheet.source.keys()):
+            if "CSS" in key[1]:
+                old_source = self.stylesheet.source[key]
+                self.stylesheet.source[key] = CssSource(
+                    self.theme_obj.css,
+                    old_source.is_defaults,
+                    old_source.tie_breaker,
+                    old_source.scope,
+                )
+        self.refresh_css()
+        self._refresh_all_widgets()
+        self.set_toast(f"Theme switched to: {self.theme_obj.label}")
 
 
-def main() -> None:
-    app = DailyOS()
+# ===========================================================================
+# CLI Entrypoint
+# ===========================================================================
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="lifeOS Daily — Ritual & Momentum Terminal App")
+    parser.add_argument("--theme", choices=["lifeos", "phosphor", "amber"], default=None, help="Startup visual theme")
+    parser.add_argument("--db", type=Path, default=None, help="Custom SQLite database file")
+    args = parser.parse_args()
+
+    app = DailyOS(db_path=args.db, theme_name=args.theme)
     app.run()
 
 
