@@ -25,11 +25,16 @@ from lifeos.core.models import (
     SyncStateEnum,
     Task,
 )
+from lifeos.core.ai import AIService
+from lifeos.core.analytics import AnalyticsEngine
 from lifeos.db.local import DatabaseManager
 from lifeos.db.supabase_sync import SupabaseSyncEngine
+from lifeos.ui.ai_modal import AIDraftModal
 from lifeos.ui.capture_modal import CaptureModal
 from lifeos.ui.close_modal import DailyCloseModal
+from lifeos.ui.command_palette import CommandPaletteModal
 from lifeos.ui.focus_cockpit import FocusCockpitModal
+from lifeos.ui.help_modal import HelpModal
 from lifeos.ui.journal_screen import JournalScreen
 from lifeos.ui.plan_screen import PlanScreen
 from lifeos.ui.project_screen import ProjectScreen
@@ -91,6 +96,8 @@ class DailyOS(App):
         self.CSS = self.theme_obj.css
 
         self.db = DatabaseManager(db_path=db_path, journal_dir=journal_dir)
+        self.analytics = AnalyticsEngine(self.db)
+        self.ai = AIService()
         self.sync_state = SyncState(status=SyncStateEnum.LOCAL_ONLY, message="local-only")
 
         self.current_date = datetime.date.today()
@@ -559,6 +566,21 @@ class DailyOS(App):
                     pass
             return
 
+        # Command Palette
+        elif k == ":":
+            self.action_open_command_palette()
+            return
+
+        # Help Overlay
+        elif k in ("?", "question_mark"):
+            self.action_open_help()
+            return
+
+        # AI Copilot Planner
+        elif k_lower in ("g", "ctrl+space"):
+            self.action_open_ai_planner()
+            return
+
         # Open Projects Screen
         elif k_lower == "p":
             self.action_open_projects()
@@ -828,6 +850,67 @@ class DailyOS(App):
             self.set_toast("Day banked! Journal updated & tomorrow's action primed.")
 
         self.push_screen(DailyCloseModal(today_str, stats), on_close_submitted)
+
+    def action_open_command_palette(self) -> None:
+        def on_cmd(cmd: Optional[str]):
+            if not cmd:
+                return
+            if cmd == "today":
+                self.calendar_active = False
+                self._refresh_all_widgets()
+            elif cmd == "plan":
+                self.action_open_plan()
+            elif cmd == "projects":
+                self.action_open_projects()
+            elif cmd == "journal":
+                self.action_open_journal()
+            elif cmd == "review":
+                self.action_open_review()
+            elif cmd == "capture":
+                self.action_quick_capture()
+            elif cmd == "close":
+                self.action_daily_close()
+            elif cmd == "ai":
+                self.action_open_ai_planner()
+            elif cmd == "sync":
+                self.action_force_sync()
+            elif cmd == "theme":
+                self.action_cycle_theme()
+            elif cmd == "quit":
+                self.exit()
+
+        self.push_screen(CommandPaletteModal(), on_cmd)
+
+    def action_open_help(self) -> None:
+        self.push_screen(HelpModal())
+
+    def action_open_ai_planner(self) -> None:
+        projects = self.db.get_projects()
+        uncompleted_actions = self.db.get_uncompleted_actions()
+        budget = self.db.get_day_capacity_budget(self.current_date.strftime("%Y-%m-%d"))
+
+        res = self.ai.propose_tomorrow_plan(
+            projects=projects,
+            uncompleted_actions=uncompleted_actions,
+            capacity_minutes=budget.get("capacity_minutes", 210),
+        )
+
+        def on_ai_review(decision: Optional[str]):
+            if decision == "accept":
+                self.set_toast("AI draft accepted and logged to daily plan!")
+            elif decision == "edit":
+                self.action_open_journal()
+            elif decision == "regenerate":
+                self.action_open_ai_planner()
+
+        self.push_screen(
+            AIDraftModal(
+                title="Tomorrow 3-Priority Proposal",
+                draft_text=res["proposal"],
+                evidence=res["evidence"],
+            ),
+            on_ai_review,
+        )
 
     def action_open_journal(self) -> None:
         def on_return(res=None):

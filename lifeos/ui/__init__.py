@@ -2,9 +2,12 @@
 lifeOS UI Package
 """
 
+from lifeos.ui.ai_modal import AIDraftModal
 from lifeos.ui.capture_modal import CaptureModal
 from lifeos.ui.close_modal import DailyCloseModal
+from lifeos.ui.command_palette import CommandPaletteModal
 from lifeos.ui.focus_cockpit import FocusCockpitModal
+from lifeos.ui.help_modal import HelpModal
 from lifeos.ui.journal_screen import JournalScreen
 from lifeos.ui.missed_block_modal import MissedBlockModal
 from lifeos.ui.plan_screen import PlanScreen
@@ -42,6 +45,9 @@ __all__ = [
     "ScheduleBlockModal",
     "CaptureModal",
     "DailyCloseModal",
+    "CommandPaletteModal",
+    "HelpModal",
+    "AIDraftModal",
     "NowCardView",
     "TodaysThreeView",
     "CommitmentsCardView",

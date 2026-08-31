@@ -1142,6 +1142,10 @@ class DatabaseManager:
         actions = self.get_actions()
         return next((a for a in actions if a.id == action_id), None)
 
+    def get_uncompleted_actions(self, project_id: Optional[int] = None) -> List[Action]:
+        actions = self.get_actions(project_id=project_id)
+        return [a for a in actions if a.status != ActionStatus.DONE]
+
     def add_action(
         self,
         title: str,
