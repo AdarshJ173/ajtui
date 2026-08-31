@@ -567,7 +567,7 @@ class DailyOS(App):
             return
 
         # Command Palette
-        elif k == ":":
+        elif k in (":", "colon"):
             self.action_open_command_palette()
             return
 

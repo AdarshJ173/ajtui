@@ -94,6 +94,10 @@ class Glyphs:
     cloud_syncing: str
     cloud_offline: str
     cloud_conflict: str
+    dot_open: str
+    line_horiz: str
+    line_vert: str
+    bullet_sub: str
 
 
 _GLYPH_TABLE: Dict[str, tuple] = {
@@ -123,6 +127,10 @@ _GLYPH_TABLE: Dict[str, tuple] = {
     "cloud_syncing":   ("↻",               "*"),
     "cloud_offline":   ("⊘",               "-"),
     "cloud_conflict":  ("⚠",               "!"),
+    "dot_open":        ("◉",               "o"),
+    "line_horiz":      ("─",               "-"),
+    "line_vert":       ("│",               "|"),
+    "bullet_sub":      ("▸",               ">"),
 }
 
 

@@ -115,3 +115,82 @@ async def test_journal_arrow_keys_do_not_switch_dates():
             await pilot.pause()
             assert app.screen.mode == "read"
             assert app.screen.current_content == "Yesterday reflection entry."
+
+
+@pytest.mark.anyio
+async def test_execution_os_screens_and_modals():
+    """Verify that all v3 execution screens and modals open and render without error."""
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "daily.db"
+        journal_dir = Path(tmp) / "journal"
+
+        app = DailyOS(db_path=db_path, journal_dir=journal_dir)
+        async with app.run_test(size=(100, 30)) as pilot:
+            # Dismiss boot
+            await pilot.press("space")
+            await pilot.pause()
+
+            # 1. Open Projects Screen ('p')
+            await pilot.press("p")
+            await pilot.pause()
+            from lifeos.ui.project_screen import ProjectScreen
+            assert isinstance(app.screen, ProjectScreen)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 2. Open Plan Screen ('l')
+            await pilot.press("l")
+            await pilot.pause()
+            from lifeos.ui.plan_screen import PlanScreen
+            assert isinstance(app.screen, PlanScreen)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 3. Open Review Screen ('w')
+            await pilot.press("w")
+            await pilot.pause()
+            from lifeos.ui.review_screen import ReviewScreen
+            assert isinstance(app.screen, ReviewScreen)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 4. Open Capture Modal ('i')
+            await pilot.press("i")
+            await pilot.pause()
+            from lifeos.ui.capture_modal import CaptureModal
+            assert isinstance(app.screen, CaptureModal)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 5. Open Daily Close Modal ('x')
+            await pilot.press("x")
+            await pilot.pause()
+            from lifeos.ui.close_modal import DailyCloseModal
+            assert isinstance(app.screen, DailyCloseModal)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 6. Open Command Palette (':')
+            await pilot.press("colon")
+            await pilot.pause()
+            from lifeos.ui.command_palette import CommandPaletteModal
+            assert isinstance(app.screen, CommandPaletteModal)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 7. Open Help Modal ('?')
+            await pilot.press("question_mark")
+            await pilot.pause()
+            from lifeos.ui.help_modal import HelpModal
+            assert isinstance(app.screen, HelpModal)
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # 8. Start Focus Cockpit ('f')
+            await pilot.press("f")
+            await pilot.pause()
+            from lifeos.ui.focus_cockpit import FocusCockpitModal
+            assert isinstance(app.screen, FocusCockpitModal)
+            await pilot.press("escape")
+            await pilot.pause()
+

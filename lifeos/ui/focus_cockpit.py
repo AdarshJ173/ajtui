@@ -76,7 +76,7 @@ class FocusCockpitModal(ModalScreen[Optional[Dict[str, Any]]]):
         kind_str = self.block.kind.value.replace("_", " ").upper()
         t_hdr.append(f"{kind_str}\n", style=f"bold {p.text_hi}")
         t_title = self.block.action.title if self.block.action else (self.block.notes or "Deep Work Block")
-        t_hdr.append(f"  {t_title}\n", style=f"bold {p.texthi}")
+        t_hdr.append(f"  {t_title}\n", style=f"bold {p.text_hi}")
         if self.block.action and self.block.action.project_title:
             t_hdr.append(f"  Project: {self.block.action.project_title}\n", style=f"{p.accent}")
         t_hdr.append(f"{g.line_horiz * 65}\n", style=f"{p.line}")
