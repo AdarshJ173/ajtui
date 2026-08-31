@@ -29,8 +29,11 @@ from lifeos.db.local import DatabaseManager
 from lifeos.db.supabase_sync import SupabaseSyncEngine
 from lifeos.ui.capture_modal import CaptureModal
 from lifeos.ui.close_modal import DailyCloseModal
+from lifeos.ui.focus_cockpit import FocusCockpitModal
 from lifeos.ui.journal_screen import JournalScreen
+from lifeos.ui.plan_screen import PlanScreen
 from lifeos.ui.project_screen import ProjectScreen
+from lifeos.ui.review_screen import ReviewScreen
 from lifeos.ui.themes import (
     Animator,
     Capabilities,
@@ -561,6 +564,21 @@ class DailyOS(App):
             self.action_open_projects()
             return
 
+        # Open Plan Screen (Timeline)
+        elif k_lower == "l":
+            self.action_open_plan()
+            return
+
+        # Open Sunday Weekly Review Screen
+        elif k_lower == "w":
+            self.action_open_review()
+            return
+
+        # Start Focus Cockpit from Now card ('F')
+        elif k_lower == "f":
+            self.action_start_now_focus()
+            return
+
         # Global Quick Capture
         elif k_lower == "i":
             self.action_quick_capture()
@@ -670,6 +688,59 @@ class DailyOS(App):
             self.refresh_data()
             self._refresh_all_widgets()
         self.push_screen(ProjectScreen(), on_return)
+
+    def action_open_plan(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(PlanScreen(), on_return)
+
+    def action_open_review(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(ReviewScreen(), on_return)
+
+    def action_start_now_focus(self) -> None:
+        today_str = self.current_date.strftime("%Y-%m-%d")
+        now_card = self.db.get_now_card(today_str, self.now_time_str[:5])
+        if not now_card:
+            self.set_toast("No active or pending focus block right now.")
+            return
+
+        block_id = now_card.get("block_id")
+        action_id = now_card.get("action_id")
+        blocks = self.db.get_time_blocks(today_str)
+        target_block = next((b for b in blocks if b.id == block_id), None)
+
+        if not target_block:
+            # Create a quick dynamic focus block
+            from lifeos.core.models import BlockKind
+            target_block = self.db.add_time_block(
+                date_str=today_str,
+                starts_at=self.now_time_str[:5],
+                ends_at="12:00",
+                action_id=action_id,
+                kind=BlockKind.DEEP_WORK,
+                planned_minutes=now_card.get("minutes", 30),
+                notes=now_card.get("title"),
+            )
+
+        def on_complete(res):
+            if res:
+                self.db.close_time_block(
+                    target_block.id,
+                    status=res["status"],
+                    actual_minutes=res["actual_minutes"],
+                    notes=res.get("notes"),
+                )
+                if target_block.action_id and res["status"].value == "completed":
+                    self.db.update_action(target_block.action_id, status=ActionStatus.DONE)
+                self.sync_engine.notify_local_mutation()
+                self.refresh_data()
+                self.set_toast(f"Focus block banked! Logged {res['actual_minutes']}m.")
+
+        self.push_screen(FocusCockpitModal(target_block), on_complete)
 
     def action_quick_capture(self) -> None:
         def on_captured(result: Optional[Tuple[str, str]]):
