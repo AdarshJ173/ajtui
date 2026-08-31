@@ -171,12 +171,13 @@ class ProjectScreen(Screen):
         k_lower = k.lower()
 
         if k_lower in ("escape", "q"):
-            self.app.pop_screen()
             event.stop()
+            self.app.pop_screen()
             return
 
         # Pane switching
         if k in ("tab", "left", "right", "h", "l"):
+            event.stop()
             self.focus_pane = "actions" if self.focus_pane == "projects" else "projects"
             self.query_one(ProjectListView).refresh()
             self.query_one(ProjectDetailView).refresh()
@@ -185,6 +186,7 @@ class ProjectScreen(Screen):
         # Navigation
         if self.focus_pane == "projects":
             if k_lower in ("up", "k"):
+                event.stop()
                 if self.projects:
                     self.project_cursor_idx = (self.project_cursor_idx - 1) % len(self.projects)
                     self.action_cursor_idx = 0
@@ -192,6 +194,7 @@ class ProjectScreen(Screen):
                     self.query_one(ProjectDetailView).refresh()
                 return
             elif k_lower in ("down", "j"):
+                event.stop()
                 if self.projects:
                     self.project_cursor_idx = (self.project_cursor_idx + 1) % len(self.projects)
                     self.action_cursor_idx = 0
@@ -204,45 +207,63 @@ class ProjectScreen(Screen):
                 curr_p = self.projects[self.project_cursor_idx]
                 if curr_p.actions:
                     if k_lower in ("up", "k"):
+                        event.stop()
                         self.action_cursor_idx = (self.action_cursor_idx - 1) % len(curr_p.actions)
                         self.query_one(ProjectDetailView).refresh()
                         return
                     elif k_lower in ("down", "j"):
+                        event.stop()
                         self.action_cursor_idx = (self.action_cursor_idx + 1) % len(curr_p.actions)
                         self.query_one(ProjectDetailView).refresh()
                         return
 
         # CRUD actions
         if k_lower == "n":
+            event.stop()
             self._action_add_project()
             return
         elif k_lower == "a":
+            event.stop()
             self._action_add_action()
             return
         elif k_lower == "e":
+            event.stop()
             self._action_edit()
             return
         elif k_lower in ("space", "enter"):
+            event.stop()
             self._action_toggle_or_select()
             return
         elif k in ("1", "2", "3"):
+            event.stop()
             self._action_commit_priority(int(k))
             return
         elif k_lower == "w":
+            event.stop()
             self._action_toggle_waiting()
             return
         elif k_lower in ("d", "x"):
+            event.stop()
             self._action_delete()
             return
 
     def _action_add_project(self) -> None:
         def on_submit(title: Optional[str]):
-            if title:
+            if title and title.strip():
+                clean_title = title.strip()
                 try:
-                    self.app.db.add_project(title=title)
+                    p = self.app.db.add_project(title=clean_title)
                     self.app.sync_engine.notify_local_mutation()
                     self.refresh_projects()
-                    self.app.set_toast(f"Created project '{title}'")
+                    # Set cursor to new project
+                    for i, proj in enumerate(self.projects):
+                        if proj.id == p.id:
+                            self.project_cursor_idx = i
+                            break
+                    self.focus_pane = "projects"
+                    self.query_one(ProjectListView).refresh()
+                    self.query_one(ProjectDetailView).refresh()
+                    self.app.set_toast(f"Created project '{clean_title}'")
                 except ValueError as e:
                     self.app.set_toast(str(e))
 
@@ -254,17 +275,42 @@ class ProjectScreen(Screen):
             return
         curr_p = self.projects[self.project_cursor_idx]
 
-        def on_submit(title: Optional[str]):
-            if title:
+        def on_submit(raw_title: Optional[str]):
+            if raw_title and raw_title.strip():
+                clean_raw = raw_title.strip()
+                # Parse optional estimate like "Action title (45m)" or "Action title 45m"
+                estimate = 30
+                import re
+                m = re.search(r'[\(\[\s](\d+)\s*(?:m|min|mins)?[\)\]]?$', clean_raw, re.IGNORECASE)
+                if m:
+                    try:
+                        estimate = int(m.group(1))
+                        clean_raw = clean_raw[:m.start()].strip()
+                    except ValueError:
+                        pass
+                
                 try:
-                    self.app.db.add_action(title=title, project_id=curr_p.id)
+                    act = self.app.db.add_action(
+                        title=clean_raw,
+                        project_id=curr_p.id,
+                        estimate_minutes=estimate,
+                    )
                     self.app.sync_engine.notify_local_mutation()
                     self.refresh_projects()
-                    self.app.set_toast(f"Added next action: {title}")
+                    # Switch focus to actions pane and highlight new action
+                    self.focus_pane = "actions"
+                    curr_refreshed = self.projects[self.project_cursor_idx]
+                    for idx, a in enumerate(curr_refreshed.actions):
+                        if a.id == act.id:
+                            self.action_cursor_idx = idx
+                            break
+                    self.query_one(ProjectListView).refresh()
+                    self.query_one(ProjectDetailView).refresh()
+                    self.app.set_toast(f"Added next action: {clean_raw} ({estimate}m)")
                 except ValueError as e:
                     self.app.set_toast(str(e))
 
-        self.app.push_screen(TextInputModal(f"Add physical action to '{curr_p.title}':"), on_submit)
+        self.app.push_screen(TextInputModal(f"Add physical action to '{curr_p.title}' (e.g. 'Task name 45m'):"), on_submit)
 
     def _action_edit(self) -> None:
         if not self.projects:

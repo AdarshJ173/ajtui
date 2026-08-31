@@ -141,21 +141,24 @@ class ReviewScreen(Screen):
         k_lower = k.lower()
 
         if k_lower in ("escape", "q"):
-            self.app.pop_screen()
             event.stop()
+            self.app.pop_screen()
             return
 
         if k_lower in ("up", "k"):
+            event.stop()
             self.decision_cursor_idx = (self.decision_cursor_idx - 1) % len(self.decisions)
             self.query_one(ReviewContentView).refresh()
             return
         elif k_lower in ("down", "j"):
+            event.stop()
             self.decision_cursor_idx = (self.decision_cursor_idx + 1) % len(self.decisions)
             self.query_one(ReviewContentView).refresh()
             return
 
         # Toggle decision ('Space' / 'Enter')
         if k in ("space", "enter"):
+            event.stop()
             curr = self.decisions[self.decision_cursor_idx]
             curr[1] = not curr[1]
             self.query_one(ReviewContentView).refresh()
@@ -164,6 +167,7 @@ class ReviewScreen(Screen):
 
         # Accept all and append to journal ('A')
         if k_lower == "a":
+            event.stop()
             today_str = self.app.current_date.strftime("%Y-%m-%d")
             review_text = (
                 f"\n\n--- WEEKLY REVIEW ---\n"

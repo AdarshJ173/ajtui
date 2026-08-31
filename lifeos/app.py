@@ -77,6 +77,7 @@ class DailyOS(App):
         db_path: Optional[Path] = None,
         journal_dir: Optional[Path] = None,
         theme_name: Optional[str] = None,
+        sync_enabled: Optional[bool] = None,
     ):
         super().__init__()
         self.caps = Capabilities()
@@ -99,6 +100,7 @@ class DailyOS(App):
         self.analytics = AnalyticsEngine(self.db)
         self.ai = AIService()
         self.sync_state = SyncState(status=SyncStateEnum.LOCAL_ONLY, message="local-only")
+        self.sync_enabled = (db_path is None) if sync_enabled is None else sync_enabled
 
         self.current_date = datetime.date.today()
         self.cal_focus_date = datetime.date.today()
@@ -156,7 +158,8 @@ class DailyOS(App):
     def on_mount(self) -> None:
         self.refresh_data()
         self.ui_animator.start()
-        self.sync_engine.start()
+        if self.sync_enabled:
+            self.sync_engine.start()
 
         self.set_interval(1.0, self._clock_tick)
         if os.environ.get("LIFEOS_AMBIENT") and not self.caps.reduced_motion:
@@ -169,7 +172,8 @@ class DailyOS(App):
             self.anim_progress = self.target_progress
 
     def on_unmount(self) -> None:
-        self.sync_engine.stop()
+        if self.sync_enabled:
+            self.sync_engine.stop()
         self.ui_animator.stop()
 
     def _apply_layout_mode(self) -> None:
@@ -218,13 +222,22 @@ class DailyOS(App):
     # -- Clock & ambient -------------------------------------------------------
 
     def _clock_tick(self) -> None:
-        new_time = datetime.datetime.now().strftime("%H:%M:%S")
+        now_dt = datetime.datetime.now()
+        new_time = now_dt.strftime("%H:%M:%S")
         if new_time != self.now_time_str:
             self.now_time_str = new_time
             try:
                 self.query_one(HeaderBar).refresh()
             except Exception:
                 pass
+
+        # Periodic day check / auto close past days at midnight / every minute
+        if now_dt.second == 0:
+            if now_dt.date() != self.current_date and not self.calendar_active:
+                self.current_date = now_dt.date()
+                self.cal_focus_date = self.current_date
+                self.refresh_data()
+            self.run_worker(self._bg_check_auto_close, thread=True)
 
     def _ambient_tick(self) -> None:
         if self.streak_count > 0:
@@ -233,6 +246,118 @@ class DailyOS(App):
                 self.query_one(HeaderBar).refresh()
             except Exception:
                 pass
+
+    def _bg_check_auto_close(self) -> None:
+        """Background routine checking if previous unclosed days should be auto-banked with AI."""
+        try:
+            today_dt = datetime.date.today()
+            # Check past 3 days for unclosed activity
+            for offset in range(1, 4):
+                past_date = today_dt - datetime.timedelta(days=offset)
+                past_date_str = past_date.strftime("%Y-%m-%d")
+                
+                existing = self.db.get_journal_entry(past_date_str)
+                if existing and "--- DAILY CLOSE ---" in (existing.content or ""):
+                    continue
+
+                comps = self.db.get_day_completions(past_date_str)
+                blocks = self.db.get_time_blocks(past_date_str)
+                prios = self.db.get_daily_priorities(past_date_str)
+                
+                has_activity = any(c.done for c in comps.values()) or len(blocks) > 0 or len(prios) > 0
+                if has_activity:
+                    self.auto_close_day(past_date_str)
+        except Exception:
+            pass
+
+    def auto_close_day(self, target_date_str: str) -> None:
+        """Automatically close a target day using AI retrospective summary and prime next action."""
+        existing = self.db.get_journal_entry(target_date_str)
+        if existing and "--- DAILY CLOSE ---" in (existing.content or ""):
+            return
+
+        budget = self.db.get_day_capacity_budget(target_date_str)
+        tasks = self.db.get_tasks()
+        comps = self.db.get_day_completions(target_date_str)
+        priorities = self.db.get_daily_priorities(target_date_str)
+        blocks = self.db.get_time_blocks(target_date_str)
+
+        p_done = sum(1 for p in priorities if p.action and p.action.status == ActionStatus.DONE)
+        r_done = sum(1 for c in comps.values() if c.done)
+        actual_focus_min = sum(
+            b.actual_minutes or b.planned_minutes
+            for b in blocks
+            if b.status.value in ("completed", "active")
+        )
+
+        done_actions = [p.action.title for p in priorities if p.action and p.action.status == ActionStatus.DONE]
+        uncompleted_actions = [p.action.title for p in priorities if p.action and p.action.status != ActionStatus.DONE]
+
+        next_acts = self.db.get_uncompleted_actions()
+        tmrw_action = next_acts[0].title if next_acts else "Plan top 3 physical priorities for the day"
+
+        moved_forward = ", ".join(done_actions) if done_actions else f"{r_done} routine habits completed"
+        blocked_str = "None" if not uncompleted_actions else f"Pending: {', '.join(uncompleted_actions)}"
+
+        try:
+            ai_draft = self.ai.generate_daily_close_draft(
+                day_stats={
+                    "date": target_date_str,
+                    "planned_str": budget["planned_str"],
+                    "actual_str": f"{actual_focus_min}m" if actual_focus_min > 0 else budget["planned_str"],
+                    "priorities_done": p_done,
+                    "priorities_total": len(priorities),
+                    "routines_done": r_done,
+                    "routines_total": len(tasks),
+                    "done_actions": done_actions,
+                    "uncompleted_actions": uncompleted_actions,
+                }
+            )
+            if ai_draft:
+                if ai_draft.get("forward"):
+                    moved_forward = ai_draft["forward"]
+                if ai_draft.get("blocked"):
+                    blocked_str = ai_draft["blocked"]
+                if ai_draft.get("tomorrow"):
+                    tmrw_action = ai_draft["tomorrow"]
+        except Exception:
+            pass
+
+        actual_str = f"{actual_focus_min}m" if actual_focus_min > 0 else budget["planned_str"]
+        close_text = (
+            f"\n\n--- DAILY CLOSE ---\n"
+            f"EXECUTION:\n"
+            f"  Planned deep work: {budget['planned_str']} | Actual: {actual_str}\n"
+            f"  Priorities completed: {p_done}/{len(priorities)}\n"
+            f"  Routines completed: {r_done}/{len(tasks)}\n\n"
+            f"1. What moved forward?\n"
+            f"   {moved_forward}\n\n"
+            f"2. What blocked me?\n"
+            f"   {blocked_str}\n\n"
+            f"3. What is tomorrow's first action?\n"
+            f"   {tmrw_action}\n"
+        )
+
+        existing_content = existing.content if existing else ""
+        new_content = existing_content.rstrip() + close_text if existing_content else close_text.strip()
+        self.db.save_journal_entry(target_date_str, new_content)
+
+        # Set next action as tomorrow's priority #1 if not already set
+        if next_acts:
+            try:
+                tmrw_date_str = (datetime.date.fromisoformat(target_date_str) + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                existing_prios = self.db.get_daily_priorities(tmrw_date_str)
+                if not any(p.rank == 1 for p in existing_prios):
+                    self.db.set_daily_priority(tmrw_date_str, 1, next_acts[0].id)
+            except Exception:
+                pass
+
+        self.sync_engine.notify_local_mutation()
+        try:
+            self.call_from_thread(self.set_toast, f"Auto-closed {target_date_str} with AI summary ✓")
+            self.call_from_thread(self.refresh_data)
+        except Exception:
+            pass
 
     # -- Boot sequence ---------------------------------------------------------
 
@@ -460,8 +585,8 @@ class DailyOS(App):
             event.stop()
             return
 
-        # If JournalScreen is active on top, let JournalScreen handle all keys
-        if getattr(self.screen, "__class__", None).__name__ == "JournalScreen":
+        # If any modal or subscreen is pushed on the stack, let it handle its own keys
+        if len(self.screen_stack) > 1 or getattr(self.screen, "__class__", None).__name__ not in ("Screen", "_default"):
             return
 
         k = event.key

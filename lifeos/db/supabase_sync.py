@@ -290,6 +290,8 @@ class SupabaseSyncEngine:
             return 0
 
         pushed_count = 0
+        supported_tables = {"routine_tasks", "completions", "journal_entries"}
+
         with self.db._get_conn() as conn:
             cur = conn.execute(
                 """
@@ -315,9 +317,16 @@ class SupabaseSyncEngine:
             outbox_id = row["id"]
             table_name = row["table_name"]
             action = row["action"]
-            payload = json.loads(row["payload"])
+
+            # Filter local-only tables that are not on remote schema
+            if table_name not in supported_tables:
+                with self.db._get_conn() as conn:
+                    conn.execute("DELETE FROM sync_outbox WHERE id = ?", (outbox_id,))
+                    conn.commit()
+                continue
 
             try:
+                payload = json.loads(row["payload"])
                 if action == "UPSERT":
                     self.client.table(table_name).upsert(payload).execute()
                 elif action == "DELETE":
@@ -337,11 +346,26 @@ class SupabaseSyncEngine:
                 pushed_count += 1
 
             except Exception as e:
+                err_str = str(e)
+                # If table doesn't exist on remote PostgREST, drop from outbox and don't fail sync
+                if "PGRST205" in err_str or "Could not find the table" in err_str:
+                    with self.db._get_conn() as conn:
+                        conn.execute("DELETE FROM sync_outbox WHERE id = ?", (outbox_id,))
+                        conn.commit()
+                    continue
+
+                # If orphaned record violates FK constraint (e.g. task was deleted), drop from outbox
+                if "23503" in err_str or "violates foreign key constraint" in err_str:
+                    with self.db._get_conn() as conn:
+                        conn.execute("DELETE FROM sync_outbox WHERE id = ?", (outbox_id,))
+                        conn.commit()
+                    continue
+
                 # Update attempt count and last error for retry
                 with self.db._get_conn() as conn:
                     conn.execute(
                         "UPDATE sync_outbox SET attempts = attempts + 1, last_error = ? WHERE id = ?",
-                        (str(e), outbox_id),
+                        (err_str, outbox_id),
                     )
                     conn.commit()
                 raise e
@@ -415,17 +439,23 @@ class SupabaseSyncEngine:
     def _reconcile(self) -> None:
         """Initial bidirectional reconciliation on startup."""
         try:
-            # First, ensure all local tasks exist on Supabase
+            # First, ensure all local tasks exist on Supabase in a single batch
             tasks = self.db.get_tasks()
-            for t in tasks:
-                self.client.table("routine_tasks").upsert({
-                    "id": t.uuid,
-                    "title": t.title,
-                    "position": t.sort_order,
-                    "active": t.active,
-                    "created_at": t.created_at or current_iso_time(),
-                    "updated_at": t.updated_at or current_iso_time(),
-                }).execute()
+            if tasks:
+                payloads = [
+                    {
+                        "id": t.uuid,
+                        "title": t.title,
+                        "position": t.sort_order,
+                        "active": t.active,
+                        "created_at": t.created_at or current_iso_time(),
+                        "updated_at": t.updated_at or current_iso_time(),
+                    }
+                    for t in tasks
+                    if t.uuid
+                ]
+                if payloads:
+                    self.client.table("routine_tasks").upsert(payloads).execute()
 
             self._push_outbox()
             self._pull_inbound()

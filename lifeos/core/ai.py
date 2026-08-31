@@ -224,3 +224,56 @@ class AIService:
             "project": None,
             "raw": "Local classification: Next Action (30m)",
         }
+
+    # -----------------------------------------------------------------------
+    # 5. Daily Close Retrospective Generator
+    # -----------------------------------------------------------------------
+
+    def generate_daily_close_draft(self, day_stats: Dict[str, Any]) -> Dict[str, str]:
+        """Generate a structured daily close reflection (forward, blocked, tomorrow)."""
+        sys_p = (
+            "You are lifeOS Daily Close Retrospective generator. Given the day's execution telemetry "
+            "(deep work minutes, priorities completed, routines completed, actions finished/uncompleted), "
+            "synthesize a concise, truth-based daily close summary. "
+            "Return JSON only: {\"forward\": \"...\", \"blocked\": \"...\", \"tomorrow\": \"...\"}\n"
+            "Guidelines: No flattery, factual truth only. 'tomorrow' must be a concrete, startable physical step."
+        )
+        user_p = (
+            f"Date: {day_stats.get('date')}\n"
+            f"Planned Deep Work: {day_stats.get('planned_str')} | Actual: {day_stats.get('actual_str')}\n"
+            f"Priorities Done: {day_stats.get('priorities_done')}/{day_stats.get('priorities_total')}\n"
+            f"Routines Done: {day_stats.get('routines_done')}/{day_stats.get('routines_total')}\n"
+            f"Completed Actions: {json.dumps(day_stats.get('done_actions', []))}\n"
+            f"Uncompleted Actions: {json.dumps(day_stats.get('uncompleted_actions', []))}\n"
+        )
+
+        res = self._call_openrouter(sys_p, user_p, max_tokens=300)
+        if res:
+            try:
+                clean_json = res.strip()
+                if clean_json.startswith("```"):
+                    clean_json = clean_json.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+                parsed = json.loads(clean_json)
+                if "forward" in parsed and "tomorrow" in parsed:
+                    return {
+                        "forward": parsed.get("forward", ""),
+                        "blocked": parsed.get("blocked", "None"),
+                        "tomorrow": parsed.get("tomorrow", ""),
+                    }
+            except Exception:
+                pass
+
+        # Deterministic fallback
+        done_actions = day_stats.get("done_actions", [])
+        uncompleted = day_stats.get("uncompleted_actions", [])
+        r_done = day_stats.get("routines_done", 0)
+
+        forward = ", ".join(done_actions) if done_actions else f"{r_done} routine habits maintained"
+        blocked = "None" if not uncompleted else f"Pending uncompleted: {', '.join(uncompleted)}"
+        tomorrow = uncompleted[0] if uncompleted else "Define and commit top 3 daily priorities"
+
+        return {
+            "forward": forward,
+            "blocked": blocked,
+            "tomorrow": tomorrow,
+        }

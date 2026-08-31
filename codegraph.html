@@ -1043,7 +1043,7 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/ui/themes.py",
-      "lines": 649
+      "lines": 653
     },
     {
       "id": "themes.py:Capabilities",
@@ -1130,7 +1130,7 @@ body {
       "label": "Glyphs",
       "type": "entity",
       "parent": "themes.py",
-      "lines": 26,
+      "lines": 30,
       "entityType": "class"
     },
     {
@@ -1293,38 +1293,6 @@ body {
       "lines": 564
     },
     {
-      "id": "widgets.py:TaskListView",
-      "label": "TaskListView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 88,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MonthCalendarView",
-      "label": "MonthCalendarView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 90,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MomentumDock",
-      "label": "MomentumDock",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 75,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:BootOverlay",
-      "label": "BootOverlay",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 35,
-      "entityType": "class"
-    },
-    {
       "id": "widgets.py:HeaderBar",
       "label": "HeaderBar",
       "type": "entity",
@@ -1338,6 +1306,38 @@ body {
       "type": "entity",
       "parent": "widgets.py",
       "lines": 45,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:TaskListView",
+      "label": "TaskListView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 88,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MomentumDock",
+      "label": "MomentumDock",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 75,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MonthCalendarView",
+      "label": "MonthCalendarView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 90,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:BootOverlay",
+      "label": "BootOverlay",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 35,
       "entityType": "class"
     },
     {
@@ -1536,19 +1536,19 @@ body {
       "lines": 327
     },
     {
-      "id": "project_screen.py:ProjectDetailView",
-      "label": "ProjectDetailView",
-      "type": "entity",
-      "parent": "project_screen.py",
-      "lines": 73,
-      "entityType": "class"
-    },
-    {
       "id": "project_screen.py:ProjectScreen",
       "label": "ProjectScreen",
       "type": "entity",
       "parent": "project_screen.py",
       "lines": 217,
+      "entityType": "class"
+    },
+    {
+      "id": "project_screen.py:ProjectDetailView",
+      "label": "ProjectDetailView",
+      "type": "entity",
+      "parent": "project_screen.py",
+      "lines": 73,
       "entityType": "class"
     },
     {
@@ -1644,19 +1644,19 @@ body {
       "lines": 211
     },
     {
-      "id": "plan_screen.py:PlanTimelineView",
-      "label": "PlanTimelineView",
-      "type": "entity",
-      "parent": "plan_screen.py",
-      "lines": 73,
-      "entityType": "class"
-    },
-    {
       "id": "plan_screen.py:PlanScreen",
       "label": "PlanScreen",
       "type": "entity",
       "parent": "plan_screen.py",
       "lines": 138,
+      "entityType": "class"
+    },
+    {
+      "id": "plan_screen.py:PlanTimelineView",
+      "label": "PlanTimelineView",
+      "type": "entity",
+      "parent": "plan_screen.py",
+      "lines": 73,
       "entityType": "class"
     },
     {
@@ -1877,6 +1877,31 @@ body {
     },
     {
       "source": "app.py:DailyOS",
+      "target": "models.py:SyncState",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
       "target": "widgets.py:HeaderBar",
       "type": "dependency"
     },
@@ -1927,47 +1952,12 @@ body {
     },
     {
       "source": "app.py:DailyOS",
+      "target": "app.py:main",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
       "target": "review_screen.py:ReviewScreen",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "focus_cockpit.py:FocusCockpitModal",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "models.py:SyncState",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "plan_screen.py:PlanScreen",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "help_modal.py:HelpModal",
       "type": "dependency"
     },
     {
@@ -1997,47 +1987,12 @@ body {
     },
     {
       "source": "app.py:DailyOS",
-      "target": "local.py:DatabaseManager",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "project_screen.py:ProjectScreen",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
       "target": "command_palette.py:CommandPaletteModal",
       "type": "dependency"
     },
     {
       "source": "app.py:DailyOS",
-      "target": "capture_modal.py:CaptureModal",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "supabase_sync.py:SupabaseSyncEngine",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "journal_screen.py:JournalScreen",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "ai_modal.py:AIDraftModal",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "app.py:main",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "analytics.py:AnalyticsEngine",
+      "target": "ai.py:AIService",
       "type": "dependency"
     },
     {
@@ -2047,7 +2002,52 @@ body {
     },
     {
       "source": "app.py:DailyOS",
-      "target": "ai.py:AIService",
+      "target": "supabase_sync.py:SupabaseSyncEngine",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "project_screen.py:ProjectScreen",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "journal_screen.py:JournalScreen",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "plan_screen.py:PlanScreen",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "local.py:DatabaseManager",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "focus_cockpit.py:FocusCockpitModal",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "capture_modal.py:CaptureModal",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "ai_modal.py:AIDraftModal",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "help_modal.py:HelpModal",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "analytics.py:AnalyticsEngine",
       "type": "dependency"
     },
     {
@@ -2642,101 +2642,6 @@ body {
     },
     {
       "source": "widgets.py",
-      "target": "widgets.py:TaskListView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:dim_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:fit",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MonthCalendarView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:ease_out_cubic",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MomentumDock",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:progress_bar_cells",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:sparkline",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:BootOverlay",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
-      "target": "themes.py:ease_out_back",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
       "target": "widgets.py:HeaderBar",
       "type": "module-entity"
     },
@@ -2777,6 +2682,101 @@ body {
     },
     {
       "source": "widgets.py:HeroBanner",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:TaskListView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:dim_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:fit",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MomentumDock",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:progress_bar_cells",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:sparkline",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MonthCalendarView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:ease_out_cubic",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:BootOverlay",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
+      "target": "themes.py:ease_out_back",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
       "target": "Static",
       "type": "dependency"
     },
@@ -3022,48 +3022,8 @@ body {
     },
     {
       "source": "project_screen.py",
-      "target": "project_screen.py:ProjectDetailView",
-      "type": "module-entity"
-    },
-    {
-      "source": "project_screen.py:ProjectDetailView",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py:ProjectDetailView",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py:ProjectDetailView",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py:ProjectDetailView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py",
       "target": "project_screen.py:ProjectScreen",
       "type": "module-entity"
-    },
-    {
-      "source": "project_screen.py:ProjectScreen",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py:ProjectScreen",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "project_screen.py:ProjectScreen",
-      "target": "models.py:ActionStatus",
-      "type": "dependency"
     },
     {
       "source": "project_screen.py:ProjectScreen",
@@ -3102,6 +3062,21 @@ body {
     },
     {
       "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectScreen",
       "target": "project_screen.py:ProjectListView",
       "type": "dependency"
     },
@@ -3113,6 +3088,31 @@ body {
     {
       "source": "project_screen.py:ProjectScreen",
       "target": "Screen",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "project_screen.py:ProjectDetailView",
+      "type": "module-entity"
+    },
+    {
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "Static",
       "type": "dependency"
     },
     {
@@ -3137,17 +3137,17 @@ body {
     },
     {
       "source": "focus_cockpit.py:FocusCockpitModal",
+      "target": "themes.py:progress_bar_cells",
+      "type": "dependency"
+    },
+    {
+      "source": "focus_cockpit.py:FocusCockpitModal",
       "target": "models.py:BlockStatus",
       "type": "dependency"
     },
     {
       "source": "focus_cockpit.py:FocusCockpitModal",
       "target": "capture_modal.py:CaptureModal",
-      "type": "dependency"
-    },
-    {
-      "source": "focus_cockpit.py:FocusCockpitModal",
-      "target": "themes.py:progress_bar_cells",
       "type": "dependency"
     },
     {
@@ -3227,6 +3227,56 @@ body {
     },
     {
       "source": "plan_screen.py",
+      "target": "plan_screen.py:PlanScreen",
+      "type": "module-entity"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "widgets.py:HeaderBar",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "widgets.py:ToastRail",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "widgets.py:KeyChipBar",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "schedule_modal.py:ScheduleBlockModal",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "focus_cockpit.py:FocusCockpitModal",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "missed_block_modal.py:MissedBlockModal",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "plan_screen.py:PlanTimelineView",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py:PlanScreen",
+      "target": "Screen",
+      "type": "dependency"
+    },
+    {
+      "source": "plan_screen.py",
       "target": "plan_screen.py:PlanTimelineView",
       "type": "module-entity"
     },
@@ -3252,56 +3302,6 @@ body {
     },
     {
       "source": "plan_screen.py",
-      "target": "plan_screen.py:PlanScreen",
-      "type": "module-entity"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "models.py:BlockStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "widgets.py:HeaderBar",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "widgets.py:ToastRail",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "widgets.py:KeyChipBar",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "missed_block_modal.py:MissedBlockModal",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "focus_cockpit.py:FocusCockpitModal",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "schedule_modal.py:ScheduleBlockModal",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "plan_screen.py:PlanTimelineView",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py:PlanScreen",
-      "target": "Screen",
-      "type": "dependency"
-    },
-    {
-      "source": "plan_screen.py",
       "target": "plan_screen.py:_",
       "type": "module-entity"
     },
@@ -3309,6 +3309,21 @@ body {
       "source": "review_screen.py",
       "target": "review_screen.py:ReviewScreen",
       "type": "module-entity"
+    },
+    {
+      "source": "review_screen.py:ReviewScreen",
+      "target": "widgets.py:HeaderBar",
+      "type": "dependency"
+    },
+    {
+      "source": "review_screen.py:ReviewScreen",
+      "target": "widgets.py:ToastRail",
+      "type": "dependency"
+    },
+    {
+      "source": "review_screen.py:ReviewScreen",
+      "target": "widgets.py:KeyChipBar",
+      "type": "dependency"
     },
     {
       "source": "review_screen.py:ReviewScreen",
@@ -3328,21 +3343,6 @@ body {
     {
       "source": "review_screen.py:ReviewScreen",
       "target": "models.py:BlockStatus",
-      "type": "dependency"
-    },
-    {
-      "source": "review_screen.py:ReviewScreen",
-      "target": "widgets.py:HeaderBar",
-      "type": "dependency"
-    },
-    {
-      "source": "review_screen.py:ReviewScreen",
-      "target": "widgets.py:ToastRail",
-      "type": "dependency"
-    },
-    {
-      "source": "review_screen.py:ReviewScreen",
-      "target": "widgets.py:KeyChipBar",
       "type": "dependency"
     },
     {
@@ -4011,8 +4011,28 @@ body {
       "type": "module-entity"
     },
     {
-      "source": "project_screen.py",
+      "source": "__init__.py",
+      "target": "project_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "capture_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
       "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "focus_cockpit.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "review_screen.py",
+      "target": "app.py",
       "type": "module-module"
     },
     {
@@ -4021,158 +4041,73 @@ body {
       "type": "module-module"
     },
     {
-      "source": "__init__.py",
-      "target": "missed_block_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "schedule_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "command_palette.py",
-      "type": "module-module"
-    },
-    {
-      "source": "supabase_sync.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
-      "source": "today_screen.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
       "source": "app.py",
-      "target": "command_palette.py",
-      "type": "module-module"
-    },
-    {
-      "source": "review_screen.py",
-      "target": "models.py",
+      "target": "help_modal.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "local.py",
-      "type": "module-module"
-    },
-    {
-      "source": "supabase_sync.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "local.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "missed_block_modal.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "review_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "ai_modal.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
       "target": "review_screen.py",
       "type": "module-module"
     },
     {
       "source": "help_modal.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "ai_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "focus_cockpit.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
       "target": "widgets.py",
       "type": "module-module"
     },
     {
-      "source": "today_screen.py",
-      "target": "app.py",
+      "source": "__init__.py",
+      "target": "help_modal.py",
       "type": "module-module"
     },
     {
       "source": "schedule_modal.py",
-      "target": "widgets.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "plan_screen.py",
+      "source": "schedule_modal.py",
       "target": "app.py",
       "type": "module-module"
     },
     {
-      "source": "close_modal.py",
-      "target": "app.py",
+      "source": "focus_cockpit.py",
+      "target": "capture_modal.py",
       "type": "module-module"
     },
     {
-      "source": "journal_screen.py",
+      "source": "app.py",
+      "target": "ai.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
       "target": "themes.py",
       "type": "module-module"
     },
     {
-      "source": "__init__.py",
-      "target": "plan_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "today_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "ai.py",
+      "source": "app.py",
       "target": "__init__.py",
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "plan_screen.py",
+      "source": "plan_screen.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "capture_modal.py",
-      "target": "app.py",
+      "source": "today_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "ai_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "review_screen.py",
+      "target": "themes.py",
       "type": "module-module"
     },
     {
@@ -4181,13 +4116,28 @@ body {
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "supabase_sync.py",
+      "source": "__init__.py",
+      "target": "ai_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "missed_block_modal.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "widgets.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "analytics.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
@@ -4196,47 +4146,42 @@ body {
       "type": "module-module"
     },
     {
-      "source": "plan_screen.py",
-      "target": "themes.py",
+      "source": "__init__.py",
+      "target": "today_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "local.py",
+      "target": "__init__.py",
       "type": "module-module"
     },
     {
       "source": "app.py",
-      "target": "widgets.py",
+      "target": "local.py",
       "type": "module-module"
     },
     {
-      "source": "close_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "schedule_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py",
+      "source": "supabase_sync.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "focus_cockpit.py",
+      "target": "local.py",
       "type": "module-module"
     },
     {
-      "source": "command_palette.py",
-      "target": "app.py",
+      "source": "focus_cockpit.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "focus_cockpit.py",
+      "source": "themes.py",
+      "target": "__init__.py",
       "type": "module-module"
     },
     {
-      "source": "project_screen.py",
+      "source": "journal_screen.py",
       "target": "app.py",
       "type": "module-module"
     },
@@ -4246,52 +4191,52 @@ body {
       "type": "module-module"
     },
     {
-      "source": "focus_cockpit.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "project_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "schedule_modal.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "plan_screen.py",
-      "target": "missed_block_modal.py",
+      "source": "app.py",
+      "target": "journal_screen.py",
       "type": "module-module"
     },
     {
       "source": "app.py",
-      "target": "project_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "project_screen.py",
       "target": "themes.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "capture_modal.py",
+      "target": "journal_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "ai_modal.py",
+      "target": "themes.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "ai_modal.py",
+      "target": "themes.py",
       "type": "module-module"
     },
     {
-      "source": "review_screen.py",
+      "source": "ai_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "plan_screen.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "today_screen.py",
       "target": "app.py",
       "type": "module-module"
     },
@@ -4301,38 +4246,188 @@ body {
       "type": "module-module"
     },
     {
-      "source": "help_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
       "source": "app.py",
       "target": "capture_modal.py",
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "ai_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "analytics.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "plan_screen.py",
+      "source": "review_screen.py",
       "target": "widgets.py",
       "type": "module-module"
     },
     {
-      "source": "themes.py",
+      "source": "journal_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "capture_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "focus_cockpit.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "focus_cockpit.py",
+      "type": "module-module"
+    },
+    {
+      "source": "schedule_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "schedule_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "capture_modal.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "focus_cockpit.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "command_palette.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "command_palette.py",
+      "type": "module-module"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "command_palette.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "schedule_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "plan_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "today_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "close_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "ai.py",
       "target": "__init__.py",
+      "type": "module-module"
+    },
+    {
+      "source": "help_modal.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "close_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "missed_block_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "missed_block_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "plan_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "plan_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "review_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "focus_cockpit.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "supabase_sync.py",
+      "type": "module-module"
+    },
+    {
+      "source": "supabase_sync.py",
+      "target": "__init__.py",
+      "type": "module-module"
+    },
+    {
+      "source": "plan_screen.py",
+      "target": "focus_cockpit.py",
+      "type": "module-module"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "review_screen.py",
       "type": "module-module"
     },
     {
@@ -4341,12 +4436,7 @@ body {
       "type": "module-module"
     },
     {
-      "source": "__init__.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "today_screen.py",
+      "source": "help_modal.py",
       "target": "themes.py",
       "type": "module-module"
     },
@@ -4356,103 +4446,8 @@ body {
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "focus_cockpit.py",
-      "target": "capture_modal.py",
-      "type": "module-module"
-    },
-    {
       "source": "plan_screen.py",
-      "target": "focus_cockpit.py",
-      "type": "module-module"
-    },
-    {
-      "source": "missed_block_modal.py",
       "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "capture_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "focus_cockpit.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "missed_block_modal.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "journal_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "journal_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "project_screen.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "help_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "help_modal.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "close_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "help_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "command_palette.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "close_modal.py",
-      "type": "module-module"
-    },
-    {
-      "source": "local.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "app.py",
       "type": "module-module"
     },
     {
@@ -4461,17 +4456,17 @@ body {
       "type": "module-module"
     },
     {
-      "source": "plan_screen.py",
+      "source": "app.py",
       "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "review_screen.py",
-      "target": "widgets.py",
+      "source": "app.py",
+      "target": "app.py",
       "type": "module-module"
     },
     {
-      "source": "local.py",
+      "source": "__init__.py",
       "target": "models.py",
       "type": "module-module"
     },
@@ -4481,38 +4476,43 @@ body {
       "type": "module-module"
     },
     {
-      "source": "review_screen.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "focus_cockpit.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "capture_modal.py",
+      "source": "widgets.py",
       "target": "widgets.py",
       "type": "module-module"
     },
     {
-      "source": "widgets.py",
+      "source": "plan_screen.py",
+      "target": "missed_block_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "local.py",
       "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "journal_screen.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "schedule_modal.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
       "source": "app.py",
-      "target": "ai.py",
+      "target": "project_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "missed_block_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "capture_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "command_palette.py",
+      "target": "themes.py",
       "type": "module-module"
     }
   ],

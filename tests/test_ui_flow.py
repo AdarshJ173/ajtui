@@ -125,6 +125,9 @@ async def test_execution_os_screens_and_modals():
         journal_dir = Path(tmp) / "journal"
 
         app = DailyOS(db_path=db_path, journal_dir=journal_dir)
+        proj = app.db.add_project(title="Test System", area="Career")
+        app.db.add_action("Focus on next step", project_id=proj.id, estimate_minutes=30)
+
         async with app.run_test(size=(100, 30)) as pilot:
             # Dismiss boot
             await pilot.press("space")
@@ -193,4 +196,82 @@ async def test_execution_os_screens_and_modals():
             assert isinstance(app.screen, FocusCockpitModal)
             await pilot.press("escape")
             await pilot.pause()
+
+
+@pytest.mark.anyio
+async def test_project_screen_add_action_does_not_add_dashboard_task():
+    """Verify pressing 'A' in ProjectScreen adds an action to the project, NOT a task to the main dashboard."""
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "daily.db"
+        journal_dir = Path(tmp) / "journal"
+
+        app = DailyOS(db_path=db_path, journal_dir=journal_dir)
+        proj = app.db.add_project(title="aajtui", area="Career")
+        init_action_count = len(proj.actions)
+
+        async with app.run_test(size=(100, 30)) as pilot:
+            # Dismiss boot
+            await pilot.press("space")
+            await pilot.pause()
+
+            init_task_count = len(app.tasks)
+
+            # Open Projects Screen ('p')
+            await pilot.press("p")
+            await pilot.pause()
+            from lifeos.ui.project_screen import ProjectScreen
+            assert isinstance(app.screen, ProjectScreen)
+
+            # Press 'a' inside ProjectScreen to add action
+            await pilot.press("a")
+            await pilot.pause()
+            from lifeos.ui.widgets import TextInputModal
+            assert isinstance(app.screen, TextInputModal)
+
+            # Type action title and submit
+            inp = app.screen.query_one("Input")
+            inp.value = "Implement WebSocket live sync 45m"
+            await pilot.press("enter")
+            await pilot.pause()
+
+            # Verify action was added to project
+            refreshed_p = app.db.get_project(proj.id)
+            assert len(refreshed_p.actions) == init_action_count + 1
+            added_act = next(a for a in refreshed_p.actions if a.title == "Implement WebSocket live sync")
+            assert added_act.estimate_minutes == 45
+
+            # Exit ProjectScreen to main dashboard
+            await pilot.press("escape")
+            await pilot.pause()
+
+            # Main dashboard tasks MUST NOT have changed
+            assert len(app.tasks) == init_task_count
+
+
+@pytest.mark.anyio
+async def test_auto_close_day_functionality():
+    """Verify auto_close_day banks the day and appends AI close summary to journal."""
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "daily.db"
+        journal_dir = Path(tmp) / "journal"
+
+        app = DailyOS(db_path=db_path, journal_dir=journal_dir)
+        yesterday_str = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Add project and priority for yesterday
+        proj = app.db.add_project("Autonomous Engine")
+        act = app.db.add_action("Refactor state machine", project_id=proj.id)
+        app.db.set_daily_priority(yesterday_str, 1, act.id)
+
+        # Trigger auto close
+        app.auto_close_day(yesterday_str)
+
+        # Verify journal entry was created and formatted
+        entry = app.db.get_journal_entry(yesterday_str)
+        assert entry is not None
+        assert "--- DAILY CLOSE ---" in entry.content
+        assert "EXECUTION:" in entry.content
+        assert "1. What moved forward?" in entry.content
+        assert "3. What is tomorrow's first action?" in entry.content
+
 

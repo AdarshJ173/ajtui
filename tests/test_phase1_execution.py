@@ -111,6 +111,9 @@ def test_capacity_budget_and_now_card():
         db = DatabaseManager(Path(tmp_dir) / "test.db")
         today_str = datetime.date.today().strftime("%Y-%m-%d")
 
+        proj = db.add_project("Test Project", "Career")
+        act = db.add_action("First physical step", project_id=proj.id, estimate_minutes=30)
+
         # Default budget
         budget = db.get_day_capacity_budget(today_str, capacity_minutes=210)
         assert budget["capacity_minutes"] == 210

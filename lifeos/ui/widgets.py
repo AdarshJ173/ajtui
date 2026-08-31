@@ -539,16 +539,13 @@ class TextInputModal(ModalScreen[Optional[str]]):
             yield Input(value=self.initial_text, id="modal_input")
 
     def on_mount(self) -> None:
-        th: Theme = self.app.theme_obj
-        p = th.palette
         box = self.query_one("#modal_box")
-        box.styles.background = p.panel or "default"
-        box.styles.border = ("round", p.accent or "default")
+        box.styles.background = "black"
+        box.styles.border = ("round", "green")
         box.styles.padding = (1, 2)
         box.styles.width = 60
         box.styles.height = "auto"
         prompt = self.query_one("#modal_prompt")
-        prompt.styles.color = p.text_hi or "default"
         prompt.styles.text_style = "bold"
         prompt.styles.margin = (0, 0, 1, 0)
         inp = self.query_one(Input)
@@ -576,19 +573,15 @@ class ConfirmModal(ModalScreen[bool]):
             yield Label("[Y] Confirm  ·  [N / Esc] Cancel", id="modal_hint")
 
     def on_mount(self) -> None:
-        th: Theme = self.app.theme_obj
-        p = th.palette
         box = self.query_one("#modal_box")
-        box.styles.background = p.panel or "default"
-        box.styles.border = ("round", p.danger or "red")
+        box.styles.background = "black"
+        box.styles.border = ("round", "red")
         box.styles.padding = (1, 2)
         box.styles.width = 56
         box.styles.height = "auto"
         prompt = self.query_one("#modal_prompt")
-        prompt.styles.color = p.text_hi or "default"
         prompt.styles.text_style = "bold"
         hint = self.query_one("#modal_hint")
-        hint.styles.color = p.text_dim or "default"
         hint.styles.margin = (1, 0, 0, 0)
 
     def on_key(self, event: events.Key) -> None:

@@ -341,11 +341,6 @@ class DatabaseManager:
                         },
                     )
 
-            # Seed default projects & actions if empty
-            cur_p = conn.execute("SELECT COUNT(*) FROM projects WHERE deleted = 0")
-            if cur_p.fetchone()[0] == 0:
-                self._seed_default_projects(conn)
-
             conn.commit()
 
     def _seed_default_projects(self, conn: sqlite3.Connection) -> None:

@@ -128,19 +128,21 @@ class PlanScreen(Screen):
         k_lower = k.lower()
 
         if k_lower in ("escape", "q"):
-            self.app.pop_screen()
             event.stop()
+            self.app.pop_screen()
             return
 
         date_str = self.app.current_date.strftime("%Y-%m-%d")
         blocks = self.app.db.get_time_blocks(date_str)
 
         if k_lower in ("up", "k"):
+            event.stop()
             if blocks:
                 self.block_cursor_idx = (self.block_cursor_idx - 1) % len(blocks)
                 self.query_one(PlanTimelineView).refresh()
             return
         elif k_lower in ("down", "j"):
+            event.stop()
             if blocks:
                 self.block_cursor_idx = (self.block_cursor_idx + 1) % len(blocks)
                 self.query_one(PlanTimelineView).refresh()
@@ -148,6 +150,7 @@ class PlanScreen(Screen):
 
         # Schedule new block ('B')
         if k_lower == "b":
+            event.stop()
             def on_scheduled(data):
                 if data:
                     self.app.db.add_time_block(
@@ -167,6 +170,7 @@ class PlanScreen(Screen):
 
         # Start Focus Cockpit ('Space' / 'Enter')
         if k in ("space", "enter") and blocks:
+            event.stop()
             curr_b = blocks[self.block_cursor_idx]
 
             # Mark block active
@@ -196,6 +200,7 @@ class PlanScreen(Screen):
 
         # Handle Missed Block ('M')
         if k_lower == "m" and blocks:
+            event.stop()
             curr_b = blocks[self.block_cursor_idx]
             def on_missed_choice(choice):
                 if choice:
@@ -210,11 +215,12 @@ class PlanScreen(Screen):
                     elif act == "reschedule":
                         self.app.db.update_time_block(
                             curr_b.id,
-                            starts_at="16:00",
-                            ends_at="17:30",
+                            starts_at=choice.get("starts_at", curr_b.starts_at),
+                            ends_at=choice.get("ends_at", curr_b.ends_at),
                             status=BlockStatus.PLANNED,
+                            notes=choice.get("reason"),
                         )
-                        self.app.set_toast("Rescheduled block to 16:00")
+                        self.app.set_toast(f"Rescheduled block to {choice.get('starts_at')}")
                     elif act == "shrink":
                         self.app.db.update_time_block(
                             curr_b.id,
@@ -229,6 +235,7 @@ class PlanScreen(Screen):
 
         # Delete Block ('D')
         if k_lower == "d" and blocks:
+            event.stop()
             curr_b = blocks[self.block_cursor_idx]
             self.app.db.delete_time_block(curr_b.id)
             self.app.sync_engine.notify_local_mutation()
