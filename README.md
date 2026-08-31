@@ -66,9 +66,12 @@ python daily.py
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Verification
 
 ```bash
-# Run the complete test suite
+# Run the complete pytest test suite (31 tests)
 pytest -q
+
+# Run the end-to-end execution OS loop demo
+python demo_v3_loop.py
 ```
