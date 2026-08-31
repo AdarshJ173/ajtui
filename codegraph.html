@@ -769,14 +769,14 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/app.py",
-      "lines": 641
+      "lines": 687
     },
     {
       "id": "app.py:DailyOS",
       "label": "DailyOS",
       "type": "entity",
       "parent": "app.py",
-      "lines": 625,
+      "lines": 671,
       "entityType": "class"
     },
     {
@@ -1143,6 +1143,38 @@ body {
       "lines": 547
     },
     {
+      "id": "widgets.py:TaskListView",
+      "label": "TaskListView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 88,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MonthCalendarView",
+      "label": "MonthCalendarView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 90,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MomentumDock",
+      "label": "MomentumDock",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 75,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:BootOverlay",
+      "label": "BootOverlay",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 35,
+      "entityType": "class"
+    },
+    {
       "id": "widgets.py:HeaderBar",
       "label": "HeaderBar",
       "type": "entity",
@@ -1156,38 +1188,6 @@ body {
       "type": "entity",
       "parent": "widgets.py",
       "lines": 45,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:TaskListView",
-      "label": "TaskListView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 88,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MomentumDock",
-      "label": "MomentumDock",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 75,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MonthCalendarView",
-      "label": "MonthCalendarView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 90,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:BootOverlay",
-      "label": "BootOverlay",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 35,
       "entityType": "class"
     },
     {
@@ -1278,41 +1278,18 @@ body {
       "entityType": "class"
     },
     {
-      "id": "tasks_screen.py",
-      "type": "module",
-      "collapsed": false,
-      "fullPath": "lifeos/ui/tasks_screen.py",
-      "lines": 209
-    },
-    {
-      "id": "tasks_screen.py:TasksScreen",
-      "label": "TasksScreen",
-      "type": "entity",
-      "parent": "tasks_screen.py",
-      "lines": 209,
-      "entityType": "class"
-    },
-    {
-      "id": "tasks_screen.py:_",
-      "label": "_",
-      "type": "entity",
-      "parent": "tasks_screen.py",
-      "lines": 0,
-      "entityType": "function"
-    },
-    {
       "id": "local.py",
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/db/local.py",
-      "lines": 810
+      "lines": 854
     },
     {
       "id": "local.py:DatabaseManager",
       "label": "DatabaseManager",
       "type": "entity",
       "parent": "local.py",
-      "lines": 810,
+      "lines": 854,
       "entityType": "class"
     },
     {
@@ -1328,14 +1305,14 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/db/supabase_sync.py",
-      "lines": 488
+      "lines": 597
     },
     {
       "id": "supabase_sync.py:SupabaseSyncEngine",
       "label": "SupabaseSyncEngine",
       "type": "entity",
       "parent": "supabase_sync.py",
-      "lines": 488,
+      "lines": 597,
       "entityType": "class"
     },
     {
@@ -1390,6 +1367,36 @@ body {
     },
     {
       "source": "app.py:DailyOS",
+      "target": "themes.py:Capabilities",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "themes.py:resolve_startup_theme",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "themes.py:Animator",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "themes.py:ease_out_cubic",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "themes.py:get_theme",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "journal_screen.py:JournalScreen",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
       "target": "widgets.py:HeaderBar",
       "type": "dependency"
     },
@@ -1440,7 +1447,12 @@ body {
     },
     {
       "source": "app.py:DailyOS",
-      "target": "supabase_sync.py:SupabaseSyncEngine",
+      "target": "app.py:main",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "local.py:DatabaseManager",
       "type": "dependency"
     },
     {
@@ -1455,42 +1467,7 @@ body {
     },
     {
       "source": "app.py:DailyOS",
-      "target": "themes.py:Capabilities",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "themes.py:resolve_startup_theme",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "themes.py:Animator",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "themes.py:ease_out_cubic",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "themes.py:get_theme",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "journal_screen.py:JournalScreen",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "app.py:main",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "local.py:DatabaseManager",
+      "target": "supabase_sync.py:SupabaseSyncEngine",
       "type": "dependency"
     },
     {
@@ -1890,6 +1867,101 @@ body {
     },
     {
       "source": "widgets.py",
+      "target": "widgets.py:TaskListView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:dim_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:fit",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MonthCalendarView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:ease_out_cubic",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MomentumDock",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:progress_bar_cells",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:sparkline",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:BootOverlay",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
+      "target": "themes.py:ease_out_back",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
       "target": "widgets.py:HeaderBar",
       "type": "module-entity"
     },
@@ -1930,101 +2002,6 @@ body {
     },
     {
       "source": "widgets.py:HeroBanner",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:TaskListView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:dim_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:fit",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MomentumDock",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:progress_bar_cells",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:sparkline",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MonthCalendarView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:ease_out_cubic",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:BootOverlay",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
-      "target": "themes.py:ease_out_back",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
       "target": "Static",
       "type": "dependency"
     },
@@ -2159,61 +2136,6 @@ body {
       "type": "dependency"
     },
     {
-      "source": "tasks_screen.py",
-      "target": "tasks_screen.py:TasksScreen",
-      "type": "module-entity"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:HeaderBar",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:HeroBanner",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:TaskListView",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:MonthCalendarView",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:MomentumDock",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:ToastRail",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:KeyChipBar",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "widgets.py:BootOverlay",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py:TasksScreen",
-      "target": "Screen",
-      "type": "dependency"
-    },
-    {
-      "source": "tasks_screen.py",
-      "target": "tasks_screen.py:_",
-      "type": "module-entity"
-    },
-    {
       "source": "__init__.py",
       "target": "__init__.py:_",
       "type": "module-entity"
@@ -2290,7 +2212,7 @@ body {
     },
     {
       "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "target": "models.py:current_iso_time",
       "type": "dependency"
     },
     {
@@ -2341,6 +2263,16 @@ body {
     {
       "source": "local.py:DatabaseManager",
       "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Task",
       "type": "dependency"
     },
     {
@@ -2439,6 +2371,96 @@ body {
       "type": "module-entity"
     },
     {
+      "source": "app.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "journal_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "local.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "local.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "supabase_sync.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
       "source": "local.py",
       "target": "__init__.py",
       "type": "module-module"
@@ -2449,108 +2471,18 @@ body {
       "type": "module-module"
     },
     {
+      "source": "app.py",
+      "target": "__init__.py",
+      "type": "module-module"
+    },
+    {
       "source": "themes.py",
       "target": "__init__.py",
       "type": "module-module"
     },
     {
-      "source": "supabase_sync.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "tasks_screen.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
       "source": "app.py",
       "target": "supabase_sync.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "tasks_screen.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "local.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "journal_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "supabase_sync.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "local.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "models.py",
       "type": "module-module"
     },
     {
@@ -2560,17 +2492,7 @@ body {
     },
     {
       "source": "app.py",
-      "target": "widgets.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
       "target": "journal_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "tasks_screen.py",
       "type": "module-module"
     },
     {
@@ -2579,18 +2501,13 @@ body {
       "type": "module-module"
     },
     {
-      "source": "journal_screen.py",
-      "target": "themes.py",
+      "source": "supabase_sync.py",
+      "target": "__init__.py",
       "type": "module-module"
     },
     {
-      "source": "journal_screen.py",
+      "source": "widgets.py",
       "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
-      "target": "models.py",
       "type": "module-module"
     }
   ],

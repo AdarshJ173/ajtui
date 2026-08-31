@@ -7,6 +7,7 @@ exponential backoff, outbox replay, and conflict-safe journal preservation.
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import os
@@ -47,10 +48,13 @@ class SupabaseSyncEngine:
         self._stop_event = threading.Event()
         self._trigger_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._realtime_thread: Optional[threading.Thread] = None
+        self._realtime_loop: Optional[asyncio.AbstractEventLoop] = None
 
         self.url: Optional[str] = None
         self.key: Optional[str] = None
         self.client: Any = None
+        self.async_client: Any = None
         self._realtime_channel: Any = None
 
         self._load_credentials()
@@ -96,19 +100,32 @@ class SupabaseSyncEngine:
                 pass
 
     def start(self) -> None:
-        """Start background sync worker thread."""
+        """Start background sync worker and realtime subscription threads."""
         if self._thread is not None and self._thread.is_alive():
             return
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._worker_loop, daemon=True, name="lifeos-sync-worker")
         self._thread.start()
 
+        if self.url and self.key:
+            self._realtime_thread = threading.Thread(
+                target=self._run_realtime_worker, daemon=True, name="lifeos-realtime-worker"
+            )
+            self._realtime_thread.start()
+
     def stop(self) -> None:
-        """Stop background worker cleanly."""
+        """Stop background worker and realtime listener cleanly."""
         self._stop_event.set()
         self._trigger_event.set()
+        if self._realtime_loop and self._realtime_loop.is_running():
+            try:
+                self._realtime_loop.call_soon_threadsafe(self._realtime_loop.stop)
+            except Exception:
+                pass
         if self._thread is not None:
             self._thread.join(timeout=2.0)
+        if self._realtime_thread is not None:
+            self._realtime_thread.join(timeout=2.0)
 
     def trigger_sync(self) -> None:
         """Signal worker to perform an immediate sync."""
@@ -117,6 +134,99 @@ class SupabaseSyncEngine:
     def notify_local_mutation(self) -> None:
         """Call whenever local data is modified."""
         self._trigger_event.set()
+
+    # -----------------------------------------------------------------------
+    # Realtime Subscriptions
+    # -----------------------------------------------------------------------
+
+    def _run_realtime_worker(self) -> None:
+        loop = asyncio.new_event_loop()
+        self._realtime_loop = loop
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._realtime_async_loop())
+        except Exception:
+            pass
+        finally:
+            try:
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.close()
+            except Exception:
+                pass
+
+    async def _realtime_async_loop(self) -> None:
+        while not self._stop_event.is_set():
+            if not self.url or not self.key:
+                await asyncio.sleep(5.0)
+                continue
+
+            try:
+                from supabase import create_async_client
+                self.async_client = await create_async_client(self.url, self.key)
+                channel = self.async_client.channel("lifeos-realtime-inbound")
+                self._realtime_channel = channel
+
+                channel.on_postgres_changes(
+                    event="*",
+                    schema="public",
+                    callback=self._handle_realtime_event,
+                )
+
+                def on_subscribe(state: Any, error: Optional[Exception] = None):
+                    # On successful subscription or reconnect, trigger an instant catch-up pull
+                    if str(state).upper() in ("SUBSCRIBED", "REALTIMESUBSCRIBESTATES.SUBSCRIBED"):
+                        self.trigger_sync()
+
+                await channel.subscribe(on_subscribe)
+
+                # Keep loop alive while not stopped
+                while not self._stop_event.is_set():
+                    await asyncio.sleep(1.0)
+
+                # Cleanup on clean exit
+                try:
+                    await self.async_client.remove_channel(channel)
+                except Exception:
+                    pass
+                break
+
+            except Exception:
+                # Backoff before reconnecting realtime
+                await asyncio.sleep(5.0)
+                # Catch up on reconnect
+                self.trigger_sync()
+
+    def _handle_realtime_event(self, payload: Any) -> None:
+        """Process incoming Postgres changes pushed via WebSocket."""
+        try:
+            data = payload.get("data", {}) if isinstance(payload, dict) else getattr(payload, "data", {})
+            table = data.get("table", "")
+            record = data.get("record") or {}
+
+            changed = False
+            if table == "routine_tasks" and record:
+                changed = self._apply_remote_task(record)
+            elif table == "completions" and record:
+                changed = self._apply_remote_completion(record)
+            elif table == "journal_entries" and record:
+                changed = self._apply_remote_journal(record)
+            elif record:
+                # Any other table -> trigger catch-up sync
+                self.trigger_sync()
+                return
+
+            if changed and self.on_remote_change:
+                try:
+                    self.on_remote_change()
+                except Exception:
+                    pass
+        except Exception:
+            self.trigger_sync()
 
     # -----------------------------------------------------------------------
     # Worker Loop

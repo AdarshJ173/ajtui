@@ -3,7 +3,6 @@ lifeOS UI Package
 """
 
 from lifeos.ui.journal_screen import JournalScreen
-from lifeos.ui.tasks_screen import TasksScreen
 from lifeos.ui.themes import Theme, get_theme, resolve_startup_theme
 from lifeos.ui.widgets import (
     BootOverlay,
@@ -19,7 +18,6 @@ from lifeos.ui.widgets import (
 )
 
 __all__ = [
-    "TasksScreen",
     "JournalScreen",
     "HeaderBar",
     "HeroBanner",

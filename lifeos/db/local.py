@@ -382,6 +382,50 @@ class DatabaseManager:
             )
             conn.commit()
 
+    def restore_task(self, task_id: int) -> Optional[Task]:
+        """Restore a soft-deleted task."""
+        now_iso = current_iso_time()
+        with self._get_conn() as conn:
+            cur = conn.execute("SELECT uuid, title, created_at, active FROM tasks WHERE id = ?", (task_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            t_uuid = row["uuid"]
+            title = row["title"]
+            c_at = row["created_at"]
+
+            c_ord = conn.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM tasks WHERE deleted = 0").fetchone()
+            next_order = c_ord[0] if c_ord else 0
+
+            conn.execute(
+                "UPDATE tasks SET deleted = 0, sort_order = ?, updated_at = ?, dirty = 1 WHERE id = ?",
+                (next_order, now_iso, task_id),
+            )
+            self._enqueue_outbox(
+                conn,
+                "routine_tasks",
+                t_uuid,
+                "UPSERT",
+                {
+                    "id": t_uuid,
+                    "title": title,
+                    "position": next_order,
+                    "active": bool(row["active"]),
+                    "created_at": str(c_at),
+                    "updated_at": now_iso,
+                },
+            )
+            conn.commit()
+            return Task(
+                id=task_id,
+                title=title,
+                sort_order=next_order,
+                created_at=str(c_at),
+                updated_at=now_iso,
+                uuid=t_uuid,
+                active=bool(row["active"]),
+            )
+
     def reorder_task(self, task_id: int, direction: int) -> None:
         tasks = self.get_tasks()
         idx = next((i for i, t in enumerate(tasks) if t.id == task_id), None)

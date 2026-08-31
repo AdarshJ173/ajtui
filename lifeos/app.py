@@ -83,9 +83,11 @@ class DailyOS(App):
         self.month_stats: Dict[str, Tuple[int, int]] = {}
         self.journal_dates_this_month: Set[str] = set()
         self.sparkline_data: List[float] = [0.0] * 7
-
         self.cursor_idx: int = 0
         self.toast_message: str = ""
+        self._toast_timer: Any = None
+        self._last_deleted_task_id: Optional[int] = None
+        self._last_deleted_task_title: str = ""
 
         # Fast animation state
         self.anim_progress: float = 0.0
@@ -155,26 +157,29 @@ class DailyOS(App):
     # -- Sync callbacks --------------------------------------------------------
 
     def _on_remote_sync_event(self) -> None:
-        try:
-            self.call_from_thread(self.refresh_data)
-        except Exception:
-            pass
+        if getattr(self, "is_running", False):
+            try:
+                self.call_from_thread(self.refresh_data)
+            except Exception:
+                pass
 
     def _on_sync_status_event(self, state: SyncState) -> None:
         self.sync_state = state
-        try:
-            self.call_from_thread(self._refresh_header_status)
-        except Exception:
-            pass
+        if getattr(self, "is_running", False):
+            try:
+                self.call_from_thread(self._refresh_header_status)
+            except Exception:
+                pass
 
     def _on_sync_conflict_event(self, date_str: str, backup_path: str) -> None:
-        try:
-            self.call_from_thread(
-                self.set_toast,
-                f"Sync conflict on {date_str} — saved loser to {Path(backup_path).name}",
-            )
-        except Exception:
-            pass
+        if getattr(self, "is_running", False):
+            try:
+                self.call_from_thread(
+                    self.set_toast,
+                    f"Sync conflict on {date_str} — saved loser to {Path(backup_path).name}",
+                )
+            except Exception:
+                pass
 
     def _refresh_header_status(self) -> None:
         try:
@@ -279,8 +284,30 @@ class DailyOS(App):
             except Exception:
                 pass
 
-    def set_toast(self, message: str) -> None:
+    def set_toast(self, message: str, ttl: Optional[float] = None) -> None:
         self.toast_message = message
+        try:
+            self.query_one(ToastRail).refresh()
+        except Exception:
+            pass
+
+        if getattr(self, "_toast_timer", None) is not None:
+            try:
+                self._toast_timer.stop()
+            except Exception:
+                pass
+            self._toast_timer = None
+
+        effective_ttl = ttl if ttl is not None else getattr(self.theme_obj.anim, "toast_ttl", 2.6)
+        if effective_ttl > 0 and message:
+            try:
+                self._toast_timer = self.set_timer(effective_ttl, self._clear_toast)
+            except Exception:
+                pass
+
+    def _clear_toast(self) -> None:
+        self.toast_message = ""
+        self._toast_timer = None
         try:
             self.query_one(ToastRail).refresh()
         except Exception:
@@ -559,6 +586,9 @@ class DailyOS(App):
         elif k_lower in ("d", "x"):
             self.action_delete_task()
             return
+        elif k_lower in ("u", "ctrl+z"):
+            self.action_undo_delete()
+            return
 
         # Force sync
         elif k in ("s", "S"):
@@ -630,12 +660,28 @@ class DailyOS(App):
             self.set_toast(self.theme_obj.messages.toast_no_tasks)
             return
         curr = self.tasks[self.cursor_idx]
+        self._last_deleted_task_id = curr.id
+        self._last_deleted_task_title = curr.title
         self.db.delete_task(curr.id)
         self.cursor_idx = max(0, min(len(self.tasks) - 2, self.cursor_idx))
         self.sync_engine.notify_local_mutation()
         self.refresh_data()
         self.animate_progress_bar()
-        self.set_toast(self.theme_obj.messages.toast_deleted)
+        self.set_toast(f"Deleted '{curr.title}' · Press U to undo", ttl=5.0)
+
+    def action_undo_delete(self) -> None:
+        if self._last_deleted_task_id is not None:
+            task_id = self._last_deleted_task_id
+            title = self._last_deleted_task_title
+            self._last_deleted_task_id = None
+            self._last_deleted_task_title = ""
+            restored = self.db.restore_task(task_id)
+            if restored:
+                self.sync_engine.notify_local_mutation()
+                self.refresh_data()
+                self.cursor_idx = len(self.tasks) - 1
+                self.animate_progress_bar()
+                self.set_toast(f"Restored '{title}'", ttl=3.0)
 
     def action_cycle_theme(self) -> None:
         themes = ["lifeos", "phosphor", "amber"]
