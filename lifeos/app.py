@@ -17,10 +17,20 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.css.stylesheet import CssSource
 
-from lifeos.core.models import Completion, SyncState, SyncStateEnum, Task
+from lifeos.core.models import (
+    ActionStatus,
+    Completion,
+    DailyPriority,
+    SyncState,
+    SyncStateEnum,
+    Task,
+)
 from lifeos.db.local import DatabaseManager
 from lifeos.db.supabase_sync import SupabaseSyncEngine
+from lifeos.ui.capture_modal import CaptureModal
+from lifeos.ui.close_modal import DailyCloseModal
 from lifeos.ui.journal_screen import JournalScreen
+from lifeos.ui.project_screen import ProjectScreen
 from lifeos.ui.themes import (
     Animator,
     Capabilities,
@@ -28,6 +38,13 @@ from lifeos.ui.themes import (
     ease_out_cubic,
     get_theme,
     resolve_startup_theme,
+)
+from lifeos.ui.today_screen import (
+    CaptureCardView,
+    CommitmentsCardView,
+    NowCardView,
+    RoutinesCompactCardView,
+    TodaysThreeView,
 )
 from lifeos.ui.widgets import (
     BootOverlay,
@@ -43,7 +60,7 @@ from lifeos.ui.widgets import (
 
 
 class DailyOS(App):
-    """lifeOS Daily Tracker & Journal — Master Application."""
+    """lifeOS Execution OS — Master Application."""
 
     CSS = ""
 
@@ -76,6 +93,7 @@ class DailyOS(App):
         self.current_date = datetime.date.today()
         self.cal_focus_date = datetime.date.today()
         self.calendar_active = False
+        self.priority_cursor_idx = 0
 
         self.tasks: List[Task] = []
         self.completions: Dict[int, Completion] = {}
@@ -278,6 +296,8 @@ class DailyOS(App):
         for cls in (
             HeaderBar, HeroBanner, TaskListView, MonthCalendarView,
             MomentumDock, ToastRail, KeyChipBar,
+            NowCardView, TodaysThreeView, CommitmentsCardView,
+            RoutinesCompactCardView, CaptureCardView,
         ):
             try:
                 self.query_one(cls).refresh()
@@ -536,6 +556,36 @@ class DailyOS(App):
                     pass
             return
 
+        # Open Projects Screen
+        elif k_lower == "p":
+            self.action_open_projects()
+            return
+
+        # Global Quick Capture
+        elif k_lower == "i":
+            self.action_quick_capture()
+            return
+
+        # Daily Close
+        elif k_lower == "x":
+            self.action_daily_close()
+            return
+
+        # Priority selection (1, 2, 3)
+        elif k in ("1", "2", "3"):
+            rank = int(k)
+            today_str = self.current_date.strftime("%Y-%m-%d")
+            prios = self.db.get_daily_priorities(today_str)
+            target = next((p for p in prios if p.rank == rank), None)
+            if target and target.action:
+                new_stat = ActionStatus.NEXT if target.action.status == ActionStatus.DONE else ActionStatus.DONE
+                self.db.update_action(target.action.id, status=new_stat)
+                self.sync_engine.notify_local_mutation()
+                self.refresh_data()
+                msg = "Completed priority!" if new_stat == ActionStatus.DONE else "Marked priority as next."
+                self.set_toast(f"{msg} ({target.action.title})")
+            return
+
         # Open Journal
         elif k == "j" or k == "5":
             self.action_open_journal()
@@ -583,7 +633,7 @@ class DailyOS(App):
         elif k_lower in ("e", "r"):
             self.action_rename_task()
             return
-        elif k_lower in ("d", "x"):
+        elif k_lower == "d":
             self.action_delete_task()
             return
         elif k_lower in ("u", "ctrl+z"):
@@ -614,6 +664,99 @@ class DailyOS(App):
             return
 
     # -- Actions ---------------------------------------------------------------
+
+    def action_open_projects(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(ProjectScreen(), on_return)
+
+    def action_quick_capture(self) -> None:
+        def on_captured(result: Optional[Tuple[str, str]]):
+            if not result:
+                return
+            cat, content = result
+            if cat == "inbox":
+                self.db.add_inbox_item(content)
+                self.sync_engine.notify_local_mutation()
+                self.refresh_data()
+                self.set_toast(f"Saved to inbox: '{content}'")
+            elif cat == "action":
+                try:
+                    self.db.add_action(title=content, estimate_minutes=30)
+                    self.sync_engine.notify_local_mutation()
+                    self.refresh_data()
+                    self.set_toast(f"Created next action: '{content}'")
+                except ValueError as e:
+                    self.set_toast(str(e))
+            elif cat == "project":
+                try:
+                    self.db.add_project(title=content)
+                    self.sync_engine.notify_local_mutation()
+                    self.refresh_data()
+                    self.set_toast(f"Created project: '{content}'")
+                except ValueError as e:
+                    self.set_toast(str(e))
+
+        self.push_screen(CaptureModal(), on_captured)
+
+    def action_daily_close(self) -> None:
+        today_str = self.current_date.strftime("%Y-%m-%d")
+        budget = self.db.get_day_capacity_budget(today_str)
+        tasks = self.db.get_tasks()
+        comps = self.db.get_day_completions(today_str)
+        priorities = self.db.get_daily_priorities(today_str)
+
+        p_done = sum(1 for p in priorities if p.action and p.action.status == ActionStatus.DONE)
+        r_done = sum(1 for c in comps.values() if c.done)
+
+        stats = {
+            "planned_str": budget["planned_str"],
+            "actual_str": f"{budget['planned_minutes'] - budget['available_minutes']}m" if budget["available_minutes"] > 0 else budget["planned_str"],
+            "priorities_done": p_done,
+            "priorities_total": len(priorities),
+            "routines_done": r_done,
+            "routines_total": len(tasks),
+        }
+
+        def on_close_submitted(res: Optional[Dict[str, str]]):
+            if not res:
+                return
+
+            close_text = (
+                f"\n\n--- DAILY CLOSE ---\n"
+                f"EXECUTION:\n"
+                f"  Planned deep work: {stats['planned_str']} | Actual: {stats['actual_str']}\n"
+                f"  Priorities completed: {stats['priorities_done']}/{stats['priorities_total']}\n"
+                f"  Routines completed: {stats['routines_done']}/{stats['routines_total']}\n\n"
+                f"1. What moved forward?\n"
+                f"   {res.get('forward', 'No entry')}\n\n"
+                f"2. What blocked me?\n"
+                f"   {res.get('blocked', 'No blockers')}\n\n"
+                f"3. What is tomorrow's first action?\n"
+                f"   {res.get('tomorrow', 'None specified')}\n"
+            )
+
+            existing = self.db.get_journal_entry(today_str)
+            existing_content = existing.content if existing else ""
+            new_content = existing_content.rstrip() + close_text if existing_content else close_text.strip()
+
+            self.db.save_journal_entry(today_str, new_content)
+
+            tmrw_action = res.get("tomorrow", "").strip()
+            if tmrw_action:
+                try:
+                    tmrw_date = (self.current_date + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                    act = self.db.add_action(title=tmrw_action, estimate_minutes=30)
+                    self.db.set_daily_priority(tmrw_date, 1, act.id)
+                except Exception:
+                    pass
+
+            self.sync_engine.notify_local_mutation()
+            self.refresh_data()
+            self.set_toast("Day banked! Journal updated & tomorrow's action primed.")
+
+        self.push_screen(DailyCloseModal(today_str, stats), on_close_submitted)
 
     def action_open_journal(self) -> None:
         def on_return(res=None):

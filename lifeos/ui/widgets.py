@@ -41,7 +41,9 @@ class KeyChipBar(Static):
         app = self.app
 
         active_screen = getattr(app, "screen", None)
-        if active_screen and getattr(active_screen, "__class__", None).__name__ == "JournalScreen":
+        active_cls = getattr(active_screen, "__class__", None).__name__ if active_screen else ""
+
+        if active_cls == "JournalScreen":
             js = active_screen
             if getattr(js, "mode", "") == "edit":
                 chips = [
@@ -54,19 +56,34 @@ class KeyChipBar(Static):
             else:
                 chips = [
                     ("E/↵", "Write"), ("B", "Browse Past"), ("D", "Del"),
-                    ("Esc", "Habits"), ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
+                    ("Esc", "Today"), ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
                 ]
+        elif active_cls == "ProjectScreen":
+            chips = [
+                ("Tab", "Switch Pane"), ("A", "Add Action"), ("N", "New Project"),
+                ("1-3", "Commit Priority"), ("Space", "Done"), ("W", "Waiting"),
+                ("D", "Delete"), ("Esc", "Today"), ("Q", "Quit"),
+            ]
+        elif active_cls == "PlanScreen":
+            chips = [
+                ("B", "Block Action"), ("Space", "Start Focus"), ("R", "Reschedule"),
+                ("S", "Shrink"), ("C", "Cancel"), ("Esc", "Today"), ("Q", "Quit"),
+            ]
+        elif active_cls == "ReviewScreen":
+            chips = [
+                ("Space", "Check Decision"), ("A", "Accept All"), ("Esc", "Today"), ("Q", "Quit"),
+            ]
         elif getattr(app, "calendar_active", False):
             chips = [
-                ("↵", "Jump"), ("Esc", "Back"), ("←/→", "Day"),
+                ("↵", "Jump"), ("Esc/C", "Today"), ("←/→", "Day"),
                 ("↑/↓", "Week"), ("0", "Today"), ("J", "Journal"),
                 ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
             ]
         else:
             chips = [
-                ("↵", "Toggle"), ("A", "Add"), ("E", "Rename"), ("D", "Del"),
-                ("K/J", "Move"), ("←/→", "Date"), ("C", "Cal"),
-                ("J", "Journal"), ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
+                ("↵", "Toggle Priority"), ("P", "Projects"), ("I", "Capture"),
+                ("X", "Close Day"), ("J", "Journal"), ("C", "Habits/Cal"),
+                ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
             ]
 
         w = self.size.width or 80

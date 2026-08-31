@@ -769,14 +769,14 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/app.py",
-      "lines": 687
+      "lines": 813
     },
     {
       "id": "app.py:DailyOS",
       "label": "DailyOS",
       "type": "entity",
       "parent": "app.py",
-      "lines": 671,
+      "lines": 797,
       "entityType": "class"
     },
     {
@@ -830,7 +830,39 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/core/models.py",
-      "lines": 48
+      "lines": 173
+    },
+    {
+      "id": "models.py:Project",
+      "label": "Project",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 13,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:Action",
+      "label": "Action",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 24,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:TimeBlock",
+      "label": "TimeBlock",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 14,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:InboxItem",
+      "label": "InboxItem",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 11,
+      "entityType": "class"
     },
     {
       "id": "models.py:SyncState",
@@ -857,27 +889,51 @@ body {
       "entityType": "function"
     },
     {
-      "id": "models.py:Task",
-      "label": "Task",
+      "id": "models.py:ProjectStatus",
+      "label": "ProjectStatus",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 6,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:ActionStatus",
+      "label": "ActionStatus",
       "type": "entity",
       "parent": "models.py",
       "lines": 8,
       "entityType": "class"
     },
     {
-      "id": "models.py:Completion",
-      "label": "Completion",
+      "id": "models.py:BlockStatus",
+      "label": "BlockStatus",
       "type": "entity",
       "parent": "models.py",
-      "lines": 9,
+      "lines": 6,
       "entityType": "class"
     },
     {
-      "id": "models.py:JournalEntry",
-      "label": "JournalEntry",
+      "id": "models.py:BlockKind",
+      "label": "BlockKind",
       "type": "entity",
       "parent": "models.py",
-      "lines": 14,
+      "lines": 5,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:EnergyLevel",
+      "label": "EnergyLevel",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 4,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:InboxStatus",
+      "label": "InboxStatus",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 5,
       "entityType": "class"
     },
     {
@@ -889,11 +945,59 @@ body {
       "entityType": "class"
     },
     {
+      "id": "models.py:is_valid_physical_action",
+      "label": "is_valid_physical_action",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 14,
+      "entityType": "function"
+    },
+    {
+      "id": "models.py:Task",
+      "label": "Task",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 9,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:Completion",
+      "label": "Completion",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 10,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:JournalEntry",
+      "label": "JournalEntry",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 15,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:ActionDependency",
+      "label": "ActionDependency",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 3,
+      "entityType": "class"
+    },
+    {
+      "id": "models.py:DailyPriority",
+      "label": "DailyPriority",
+      "type": "entity",
+      "parent": "models.py",
+      "lines": 9,
+      "entityType": "class"
+    },
+    {
       "id": "themes.py",
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/ui/themes.py",
-      "lines": 517
+      "lines": 649
     },
     {
       "id": "themes.py:Capabilities",
@@ -932,7 +1036,7 @@ body {
       "label": "_build_css",
       "type": "entity",
       "parent": "themes.py",
-      "lines": 185,
+      "lines": 317,
       "entityType": "function"
     },
     {
@@ -1140,39 +1244,7 @@ body {
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/ui/widgets.py",
-      "lines": 547
-    },
-    {
-      "id": "widgets.py:TaskListView",
-      "label": "TaskListView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 88,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MonthCalendarView",
-      "label": "MonthCalendarView",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 90,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:MomentumDock",
-      "label": "MomentumDock",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 75,
-      "entityType": "class"
-    },
-    {
-      "id": "widgets.py:BootOverlay",
-      "label": "BootOverlay",
-      "type": "entity",
-      "parent": "widgets.py",
-      "lines": 35,
-      "entityType": "class"
+      "lines": 564
     },
     {
       "id": "widgets.py:HeaderBar",
@@ -1191,6 +1263,38 @@ body {
       "entityType": "class"
     },
     {
+      "id": "widgets.py:TaskListView",
+      "label": "TaskListView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 88,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MomentumDock",
+      "label": "MomentumDock",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 75,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:MonthCalendarView",
+      "label": "MonthCalendarView",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 90,
+      "entityType": "class"
+    },
+    {
+      "id": "widgets.py:BootOverlay",
+      "label": "BootOverlay",
+      "type": "entity",
+      "parent": "widgets.py",
+      "lines": 35,
+      "entityType": "class"
+    },
+    {
       "id": "widgets.py:_",
       "label": "_",
       "type": "entity",
@@ -1203,7 +1307,7 @@ body {
       "label": "KeyChipBar",
       "type": "entity",
       "parent": "widgets.py",
-      "lines": 55,
+      "lines": 72,
       "entityType": "class"
     },
     {
@@ -1238,19 +1342,19 @@ body {
       "lines": 368
     },
     {
-      "id": "journal_screen.py:JournalScreen",
-      "label": "JournalScreen",
-      "type": "entity",
-      "parent": "journal_screen.py",
-      "lines": 234,
-      "entityType": "class"
-    },
-    {
       "id": "journal_screen.py:JournalBrowseView",
       "label": "JournalBrowseView",
       "type": "entity",
       "parent": "journal_screen.py",
       "lines": 52,
+      "entityType": "class"
+    },
+    {
+      "id": "journal_screen.py:JournalScreen",
+      "label": "JournalScreen",
+      "type": "entity",
+      "parent": "journal_screen.py",
+      "lines": 234,
       "entityType": "class"
     },
     {
@@ -1278,19 +1382,151 @@ body {
       "entityType": "class"
     },
     {
+      "id": "capture_modal.py",
+      "type": "module",
+      "collapsed": false,
+      "fullPath": "lifeos/ui/capture_modal.py",
+      "lines": 70
+    },
+    {
+      "id": "capture_modal.py:_",
+      "label": "_",
+      "type": "entity",
+      "parent": "capture_modal.py",
+      "lines": 0,
+      "entityType": "function"
+    },
+    {
+      "id": "capture_modal.py:CaptureModal",
+      "label": "CaptureModal",
+      "type": "entity",
+      "parent": "capture_modal.py",
+      "lines": 70,
+      "entityType": "class"
+    },
+    {
+      "id": "close_modal.py",
+      "type": "module",
+      "collapsed": false,
+      "fullPath": "lifeos/ui/close_modal.py",
+      "lines": 98
+    },
+    {
+      "id": "close_modal.py:_",
+      "label": "_",
+      "type": "entity",
+      "parent": "close_modal.py",
+      "lines": 0,
+      "entityType": "function"
+    },
+    {
+      "id": "close_modal.py:DailyCloseModal",
+      "label": "DailyCloseModal",
+      "type": "entity",
+      "parent": "close_modal.py",
+      "lines": 98,
+      "entityType": "class"
+    },
+    {
+      "id": "today_screen.py",
+      "type": "module",
+      "collapsed": false,
+      "fullPath": "lifeos/ui/today_screen.py",
+      "lines": 170
+    },
+    {
+      "id": "today_screen.py:TodaysThreeView",
+      "label": "TodaysThreeView",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 55,
+      "entityType": "class"
+    },
+    {
+      "id": "today_screen.py:RoutinesCompactCardView",
+      "label": "RoutinesCompactCardView",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 27,
+      "entityType": "class"
+    },
+    {
+      "id": "today_screen.py:_",
+      "label": "_",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 0,
+      "entityType": "function"
+    },
+    {
+      "id": "today_screen.py:NowCardView",
+      "label": "NowCardView",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 45,
+      "entityType": "class"
+    },
+    {
+      "id": "today_screen.py:CommitmentsCardView",
+      "label": "CommitmentsCardView",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 23,
+      "entityType": "class"
+    },
+    {
+      "id": "today_screen.py:CaptureCardView",
+      "label": "CaptureCardView",
+      "type": "entity",
+      "parent": "today_screen.py",
+      "lines": 20,
+      "entityType": "class"
+    },
+    {
+      "id": "project_screen.py",
+      "type": "module",
+      "collapsed": false,
+      "fullPath": "lifeos/ui/project_screen.py",
+      "lines": 327
+    },
+    {
+      "id": "project_screen.py:ProjectDetailView",
+      "label": "ProjectDetailView",
+      "type": "entity",
+      "parent": "project_screen.py",
+      "lines": 73,
+      "entityType": "class"
+    },
+    {
+      "id": "project_screen.py:ProjectScreen",
+      "label": "ProjectScreen",
+      "type": "entity",
+      "parent": "project_screen.py",
+      "lines": 217,
+      "entityType": "class"
+    },
+    {
+      "id": "project_screen.py:_",
+      "label": "_",
+      "type": "entity",
+      "parent": "project_screen.py",
+      "lines": 0,
+      "entityType": "function"
+    },
+    {
+      "id": "project_screen.py:ProjectListView",
+      "label": "ProjectListView",
+      "type": "entity",
+      "parent": "project_screen.py",
+      "lines": 37,
+      "entityType": "class"
+    },
+    {
       "id": "local.py",
       "type": "module",
       "collapsed": false,
       "fullPath": "lifeos/db/local.py",
-      "lines": 854
-    },
-    {
-      "id": "local.py:DatabaseManager",
-      "label": "DatabaseManager",
-      "type": "entity",
-      "parent": "local.py",
-      "lines": 854,
-      "entityType": "class"
+      "lines": 2099
     },
     {
       "id": "local.py:_",
@@ -1299,6 +1535,14 @@ body {
       "parent": "local.py",
       "lines": 0,
       "entityType": "function"
+    },
+    {
+      "id": "local.py:DatabaseManager",
+      "label": "DatabaseManager",
+      "type": "entity",
+      "parent": "local.py",
+      "lines": 2099,
+      "entityType": "class"
     },
     {
       "id": "supabase_sync.py",
@@ -1357,6 +1601,16 @@ body {
       "id": "Screen",
       "type": "external",
       "label": "Screen"
+    },
+    {
+      "id": "ModalScreenOptionalTuplestr",
+      "type": "external",
+      "label": "ModalScreenOptionalTuplestr"
+    },
+    {
+      "id": "ModalScreenOptionalDictstr",
+      "type": "external",
+      "label": "ModalScreenOptionalDictstr"
     }
   ],
   "links": [
@@ -1364,6 +1618,31 @@ body {
       "source": "app.py",
       "target": "app.py:DailyOS",
       "type": "module-entity"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:SyncState",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
     },
     {
       "source": "app.py:DailyOS",
@@ -1388,11 +1667,6 @@ body {
     {
       "source": "app.py:DailyOS",
       "target": "themes.py:get_theme",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "journal_screen.py:JournalScreen",
       "type": "dependency"
     },
     {
@@ -1447,7 +1721,22 @@ body {
     },
     {
       "source": "app.py:DailyOS",
+      "target": "close_modal.py:DailyCloseModal",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
       "target": "app.py:main",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "supabase_sync.py:SupabaseSyncEngine",
+      "type": "dependency"
+    },
+    {
+      "source": "app.py:DailyOS",
+      "target": "capture_modal.py:CaptureModal",
       "type": "dependency"
     },
     {
@@ -1457,17 +1746,12 @@ body {
     },
     {
       "source": "app.py:DailyOS",
-      "target": "models.py:SyncState",
+      "target": "journal_screen.py:JournalScreen",
       "type": "dependency"
     },
     {
       "source": "app.py:DailyOS",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "app.py:DailyOS",
-      "target": "supabase_sync.py:SupabaseSyncEngine",
+      "target": "project_screen.py:ProjectScreen",
       "type": "dependency"
     },
     {
@@ -1527,6 +1811,61 @@ body {
     },
     {
       "source": "models.py",
+      "target": "models.py:Project",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:Project",
+      "target": "models.py:ProjectStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:Action",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:Action",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:Action",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:Action",
+      "target": "models.py:EnergyLevel",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:TimeBlock",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:TimeBlock",
+      "target": "models.py:BlockKind",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:TimeBlock",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:InboxItem",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:InboxItem",
+      "target": "models.py:InboxStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
       "target": "models.py:SyncState",
       "type": "module-entity"
     },
@@ -1547,18 +1886,93 @@ body {
     },
     {
       "source": "models.py",
-      "target": "models.py:Task",
+      "target": "models.py:ProjectStatus",
       "type": "module-entity"
     },
     {
-      "source": "models.py",
-      "target": "models.py:Completion",
-      "type": "module-entity"
+      "source": "models.py:ProjectStatus",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:ProjectStatus",
+      "target": "Enum",
+      "type": "dependency"
     },
     {
       "source": "models.py",
-      "target": "models.py:JournalEntry",
+      "target": "models.py:ActionStatus",
       "type": "module-entity"
+    },
+    {
+      "source": "models.py:ActionStatus",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:ActionStatus",
+      "target": "Enum",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:BlockStatus",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:BlockStatus",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:BlockStatus",
+      "target": "Enum",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:BlockKind",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:BlockKind",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:BlockKind",
+      "target": "Enum",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:EnergyLevel",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:EnergyLevel",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:EnergyLevel",
+      "target": "Enum",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:InboxStatus",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py:InboxStatus",
+      "target": "str",
+      "type": "dependency"
+    },
+    {
+      "source": "models.py:InboxStatus",
+      "target": "Enum",
+      "type": "dependency"
     },
     {
       "source": "models.py",
@@ -1574,6 +1988,36 @@ body {
       "source": "models.py:SyncStateEnum",
       "target": "Enum",
       "type": "dependency"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:is_valid_physical_action",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:Task",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:Completion",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:JournalEntry",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:ActionDependency",
+      "type": "module-entity"
+    },
+    {
+      "source": "models.py",
+      "target": "models.py:DailyPriority",
+      "type": "module-entity"
     },
     {
       "source": "__init__.py",
@@ -1867,101 +2311,6 @@ body {
     },
     {
       "source": "widgets.py",
-      "target": "widgets.py:TaskListView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:dim_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "themes.py:fit",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:TaskListView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MonthCalendarView",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:ease_out_cubic",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "themes.py:rich_style",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MonthCalendarView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:MomentumDock",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:progress_bar_cells",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "themes.py:sparkline",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:MomentumDock",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py:BootOverlay",
-      "type": "module-entity"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
-      "target": "themes.py:ease_out_back",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py:BootOverlay",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "widgets.py",
       "target": "widgets.py:HeaderBar",
       "type": "module-entity"
     },
@@ -2002,6 +2351,101 @@ body {
     },
     {
       "source": "widgets.py:HeroBanner",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:TaskListView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:dim_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "themes.py:fit",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:TaskListView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MomentumDock",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:progress_bar_cells",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "themes.py:sparkline",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MomentumDock",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:MonthCalendarView",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:ease_out_cubic",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "themes.py:rich_style",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:MonthCalendarView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py:BootOverlay",
+      "type": "module-entity"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
+      "target": "themes.py:ease_out_back",
+      "type": "dependency"
+    },
+    {
+      "source": "widgets.py:BootOverlay",
       "target": "Static",
       "type": "dependency"
     },
@@ -2052,6 +2496,21 @@ body {
     },
     {
       "source": "journal_screen.py",
+      "target": "journal_screen.py:JournalBrowseView",
+      "type": "module-entity"
+    },
+    {
+      "source": "journal_screen.py:JournalBrowseView",
+      "target": "themes.py:fit",
+      "type": "dependency"
+    },
+    {
+      "source": "journal_screen.py:JournalBrowseView",
+      "target": "Static",
+      "type": "dependency"
+    },
+    {
+      "source": "journal_screen.py",
       "target": "journal_screen.py:JournalScreen",
       "type": "module-entity"
     },
@@ -2097,21 +2556,6 @@ body {
     },
     {
       "source": "journal_screen.py",
-      "target": "journal_screen.py:JournalBrowseView",
-      "type": "module-entity"
-    },
-    {
-      "source": "journal_screen.py:JournalBrowseView",
-      "target": "themes.py:fit",
-      "type": "dependency"
-    },
-    {
-      "source": "journal_screen.py:JournalBrowseView",
-      "target": "Static",
-      "type": "dependency"
-    },
-    {
-      "source": "journal_screen.py",
       "target": "journal_screen.py:_",
       "type": "module-entity"
     },
@@ -2141,194 +2585,769 @@ body {
       "type": "module-entity"
     },
     {
-      "source": "local.py",
-      "target": "local.py:DatabaseManager",
+      "source": "capture_modal.py",
+      "target": "capture_modal.py:_",
       "type": "module-entity"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "capture_modal.py",
+      "target": "capture_modal.py:CaptureModal",
+      "type": "module-entity"
+    },
+    {
+      "source": "capture_modal.py:CaptureModal",
+      "target": "ModalScreenOptionalTuplestr",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "capture_modal.py:CaptureModal",
+      "target": "str",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "close_modal.py",
+      "target": "close_modal.py:_",
+      "type": "module-entity"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "close_modal.py:DailyCloseModal",
+      "type": "module-entity"
+    },
+    {
+      "source": "close_modal.py:DailyCloseModal",
+      "target": "ModalScreenOptionalDictstr",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "close_modal.py:DailyCloseModal",
+      "target": "str",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py",
+      "target": "today_screen.py:TodaysThreeView",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py:TodaysThreeView",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py:TodaysThreeView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py",
+      "target": "today_screen.py:RoutinesCompactCardView",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py:RoutinesCompactCardView",
+      "target": "themes.py:progress_bar_cells",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py:RoutinesCompactCardView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py",
+      "target": "today_screen.py:_",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py",
+      "target": "today_screen.py:NowCardView",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py:NowCardView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py",
+      "target": "today_screen.py:CommitmentsCardView",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py:CommitmentsCardView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "today_screen.py",
+      "target": "today_screen.py:CaptureCardView",
+      "type": "module-entity"
+    },
+    {
+      "source": "today_screen.py:CaptureCardView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "project_screen.py",
+      "target": "project_screen.py:ProjectDetailView",
+      "type": "module-entity"
+    },
+    {
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:current_iso_time",
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectDetailView",
+      "target": "Static",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py",
+      "target": "project_screen.py:ProjectScreen",
+      "type": "module-entity"
+    },
+    {
+      "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "models.py:ActionStatus",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:HeaderBar",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:ToastRail",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:KeyChipBar",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:TextInputModal",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:TextInputModal",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:TextInputModal",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:generate_uuid",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "widgets.py:TextInputModal",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Task",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "project_screen.py:ProjectListView",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Task",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "project_screen.py:ProjectDetailView",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Task",
+      "source": "project_screen.py:ProjectScreen",
+      "target": "Screen",
       "type": "dependency"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Completion",
-      "type": "dependency"
+      "source": "project_screen.py",
+      "target": "project_screen.py:_",
+      "type": "module-entity"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Completion",
-      "type": "dependency"
+      "source": "project_screen.py",
+      "target": "project_screen.py:ProjectListView",
+      "type": "module-entity"
     },
     {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:Completion",
-      "type": "dependency"
-    },
-    {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:JournalEntry",
-      "type": "dependency"
-    },
-    {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:JournalEntry",
-      "type": "dependency"
-    },
-    {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:JournalEntry",
-      "type": "dependency"
-    },
-    {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:JournalEntry",
-      "type": "dependency"
-    },
-    {
-      "source": "local.py:DatabaseManager",
-      "target": "models.py:JournalEntry",
+      "source": "project_screen.py:ProjectListView",
+      "target": "Static",
       "type": "dependency"
     },
     {
       "source": "local.py",
       "target": "local.py:_",
       "type": "module-entity"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:_",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py",
+      "target": "local.py:DatabaseManager",
+      "type": "module-entity"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ActionStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:current_iso_time",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:generate_uuid",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Task",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Task",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Task",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Completion",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Project",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Project",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ProjectStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:ProjectStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:is_valid_physical_action",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:is_valid_physical_action",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:is_valid_physical_action",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:is_valid_physical_action",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:Action",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:EnergyLevel",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:EnergyLevel",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:DailyPriority",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:DailyPriority",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:TimeBlock",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:TimeBlock",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:TimeBlock",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockKind",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockKind",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockKind",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockKind",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:BlockStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:InboxStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:InboxStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:InboxStatus",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:InboxItem",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:InboxItem",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
+    },
+    {
+      "source": "local.py:DatabaseManager",
+      "target": "models.py:JournalEntry",
+      "type": "dependency"
     },
     {
       "source": "__init__.py",
@@ -2371,18 +3390,18 @@ body {
       "type": "module-entity"
     },
     {
-      "source": "app.py",
-      "target": "app.py",
+      "source": "widgets.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "supabase_sync.py",
+      "target": "__init__.py",
       "type": "module-module"
     },
     {
       "source": "__init__.py",
-      "target": "journal_screen.py",
-      "type": "module-module"
-    },
-    {
-      "source": "local.py",
-      "target": "models.py",
+      "target": "widgets.py",
       "type": "module-module"
     },
     {
@@ -2391,33 +3410,18 @@ body {
       "type": "module-module"
     },
     {
-      "source": "widgets.py",
+      "source": "app.py",
       "target": "models.py",
       "type": "module-module"
     },
     {
-      "source": "__init__.py",
+      "source": "capture_modal.py",
       "target": "app.py",
       "type": "module-module"
     },
     {
-      "source": "journal_screen.py",
-      "target": "app.py",
-      "type": "module-module"
-    },
-    {
-      "source": "app.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
+      "source": "today_screen.py",
       "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "widgets.py",
-      "target": "widgets.py",
       "type": "module-module"
     },
     {
@@ -2426,53 +3430,33 @@ body {
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
+      "source": "project_screen.py",
       "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "supabase_sync.py",
-      "target": "models.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
-      "target": "themes.py",
-      "type": "module-module"
-    },
-    {
-      "source": "__init__.py",
-      "target": "widgets.py",
       "type": "module-module"
     },
     {
       "source": "local.py",
-      "target": "__init__.py",
-      "type": "module-module"
-    },
-    {
-      "source": "journal_screen.py",
-      "target": "widgets.py",
+      "target": "models.py",
       "type": "module-module"
     },
     {
       "source": "app.py",
-      "target": "__init__.py",
+      "target": "local.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "app.py",
       "type": "module-module"
     },
     {
@@ -2481,13 +3465,63 @@ body {
       "type": "module-module"
     },
     {
-      "source": "app.py",
-      "target": "supabase_sync.py",
+      "source": "__init__.py",
+      "target": "today_screen.py",
       "type": "module-module"
     },
     {
-      "source": "__main__.py",
-      "target": "app.py",
+      "source": "capture_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "local.py",
+      "target": "__init__.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "journal_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "today_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "capture_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "today_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "widgets.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "today_screen.py",
+      "target": "widgets.py",
       "type": "module-module"
     },
     {
@@ -2496,18 +3530,113 @@ body {
       "type": "module-module"
     },
     {
+      "source": "__init__.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
       "source": "app.py",
-      "target": "local.py",
+      "target": "__init__.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "project_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "close_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "capture_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "app.py",
       "type": "module-module"
     },
     {
       "source": "supabase_sync.py",
-      "target": "__init__.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "project_screen.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "close_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "models.py",
+      "type": "module-module"
+    },
+    {
+      "source": "close_modal.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "journal_screen.py",
+      "target": "widgets.py",
+      "type": "module-module"
+    },
+    {
+      "source": "project_screen.py",
+      "target": "themes.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__main__.py",
+      "target": "app.py",
       "type": "module-module"
     },
     {
       "source": "widgets.py",
       "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "today_screen.py",
+      "target": "app.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "capture_modal.py",
+      "type": "module-module"
+    },
+    {
+      "source": "app.py",
+      "target": "supabase_sync.py",
+      "type": "module-module"
+    },
+    {
+      "source": "__init__.py",
+      "target": "models.py",
       "type": "module-module"
     }
   ],

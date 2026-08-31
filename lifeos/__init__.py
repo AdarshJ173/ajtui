@@ -1,12 +1,30 @@
 """
-lifeOS — State of the Art Routine & Momentum Tracker with Journal and Cloud Sync
+lifeOS — Intent-to-Execution Terminal Operating System
 """
 
 from lifeos.app import DailyOS
-from lifeos.core.models import Completion, JournalEntry, SyncState, SyncStateEnum, Task
+from lifeos.core.models import (
+    Action,
+    ActionDependency,
+    ActionStatus,
+    BlockKind,
+    BlockStatus,
+    Completion,
+    DailyPriority,
+    EnergyLevel,
+    InboxItem,
+    InboxStatus,
+    JournalEntry,
+    Project,
+    ProjectStatus,
+    SyncState,
+    SyncStateEnum,
+    Task,
+    TimeBlock,
+)
 from lifeos.db.local import DatabaseManager
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 __all__ = [
     "DailyOS",
@@ -14,6 +32,18 @@ __all__ = [
     "Task",
     "Completion",
     "JournalEntry",
+    "Project",
+    "ProjectStatus",
+    "Action",
+    "ActionStatus",
+    "ActionDependency",
+    "DailyPriority",
+    "TimeBlock",
+    "BlockStatus",
+    "BlockKind",
+    "EnergyLevel",
+    "InboxItem",
+    "InboxStatus",
     "SyncState",
     "SyncStateEnum",
 ]

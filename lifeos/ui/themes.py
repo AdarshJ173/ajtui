@@ -598,7 +598,139 @@ TextArea {{
     color: $texthi;
 }}
 TextArea:focus {{ border: tall $accent; }}
-Button {{ margin-left: 1; }}
+
+/* ┌──────────────────────── today command center ┐ */
+#today_container {{
+    width: 1fr;
+    height: 1fr;
+    layout: vertical;
+    padding: 0 1;
+}}
+
+#now_card {{
+    height: auto;
+    min-height: 5;
+    padding: 1 2;
+    margin: 1 0 0 0;
+    background: $panel;
+    border: round $accent;
+    border-title-color: $accenthi;
+}}
+
+#priorities_card {{
+    height: 1fr;
+    min-height: 8;
+    padding: 1 2;
+    margin: 1 0 0 0;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#today_bottom_row {{
+    height: auto;
+    min-height: 6;
+    max-height: 8;
+    layout: horizontal;
+    margin: 1 0 0 0;
+}}
+
+#commitments_card {{
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#routines_card {{
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    margin: 0 1;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#capture_card {{
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+/* ┌──────────────────────── projects screen ┐ */
+#project_split {{
+    width: 1fr;
+    height: 1fr;
+    layout: horizontal;
+    padding: 1 1;
+}}
+
+#project_sidebar {{
+    width: 32;
+    height: 1fr;
+    padding: 0 1;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#project_content {{
+    width: 1fr;
+    height: 1fr;
+    padding: 0 1;
+    margin-left: 1;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+/* ┌──────────────────────── plan & review screens ┐ */
+#plan_container, #review_container {{
+    width: 1fr;
+    height: 1fr;
+    padding: 1 2;
+    margin: 1 1 0 1;
+    background: $panel;
+    border: round $line;
+    layout: vertical;
+}}
+
+#timeline_view, #review_content {{
+    width: 1fr;
+    height: 1fr;
+    background: $inset;
+    border: round $line;
+    padding: 1 2;
+    overflow-y: scroll;
+}}
+
+/* ┌──────────────────────── focus cockpit & overlay modals ┐ */
+.modal-box {{
+    width: 70;
+    max-width: 90%;
+    height: auto;
+    max-height: 85%;
+    padding: 1 2;
+    background: $panel;
+    border: round $accent;
+    border-title-color: $accenthi;
+}}
+
+.focus-box {{
+    width: 80;
+    max-width: 95%;
+    height: auto;
+    min-height: 18;
+    padding: 2 3;
+    background: $bg;
+    border: double $accenthi;
+}}
 """
 
 
