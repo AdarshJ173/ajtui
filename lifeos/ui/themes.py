@@ -98,6 +98,15 @@ class Glyphs:
     line_horiz: str
     line_vert: str
     bullet_sub: str
+    checkbox_checked: str
+    checkbox_empty: str
+    focus_dot: str
+    grip: str
+    heat_missed: str
+    heat_done: str
+    heat_partial: str
+    bar_block: str
+    bar_empty: str
 
 
 _GLYPH_TABLE: Dict[str, tuple] = {
@@ -115,7 +124,7 @@ _GLYPH_TABLE: Dict[str, tuple] = {
     "bar_shades":      ("▓▒░",             "#+."),
     "bar_track":       ("·",               "."),
     "spark_line":      (" ▁▂▃▄▅▆",         " ._-^~"),
-    "flame":           ("♦",               "^"),
+    "flame":           ("🔥",              "^"),
     "bolt":            ("»",               ">"),
     "done":            ("●",               "o"),
     "partial":         ("◐",               "%"),
@@ -131,6 +140,15 @@ _GLYPH_TABLE: Dict[str, tuple] = {
     "line_horiz":      ("─",               "-"),
     "line_vert":       ("│",               "|"),
     "bullet_sub":      ("▸",               ">"),
+    "checkbox_checked": ("☑",              "[x]"),
+    "checkbox_empty":   ("□",              "[ ]"),
+    "focus_dot":        ("⊙",              "o"),
+    "grip":             (":::",            ":::"),
+    "heat_missed":      ("○",              "o"),
+    "heat_done":        ("●",              "o"),
+    "heat_partial":     ("◐",              "%"),
+    "bar_block":        ("■",              "#"),
+    "bar_empty":        ("□",              "."),
 }
 
 
@@ -295,7 +313,7 @@ class Metrics:
     min_w: int = 58
     min_h: int = 20
     cal_w: int = 38
-    stack_bp: int = 84
+    stack_bp: int = 110
     list_h_stacked: int = 12
 
 
@@ -461,9 +479,16 @@ Screen {{
 /* ┌──────────────────────── chrome: header ┐ */
 #topbar {{
     height: 3;
-    background: $panel;
-    padding: 1 1 0 1;
+    background: $bg;
+    padding: 0 1;
     border-bottom: solid $line;
+}}
+
+/* ┌──────────────────────── views container ┐ */
+#screens_container {{
+    width: 1fr;
+    height: 1fr;
+    layout: vertical;
 }}
 
 /* ┌──────────────────────── hero banner ┐ */
@@ -534,12 +559,13 @@ Screen {{
     background: $bg;
 }}
 
-/* ┌──────────────────────── footer ┐ */
-#footer {{
+/* ┌──────────────────────── footer / status bar ┐ */
+#footer, #status_bar {{
     height: 1;
-    background: $panel;
+    background: $bg;
     color: $txtdim;
     padding: 0 1;
+    border-top: solid $line;
 }}
 
 /* ┌──────────────────────── journal view ┐ */
@@ -607,64 +633,127 @@ TextArea {{
 }}
 TextArea:focus {{ border: tall $accent; }}
 
-/* ┌──────────────────────── today command center ┐ */
-#today_container {{
+/* ┌──────────────────────── today command center (3-column layout) ┐ */
+#today_view {{
     width: 1fr;
     height: 1fr;
     layout: vertical;
     padding: 0 1;
 }}
 
+#today_header_title {{
+    height: 1;
+    padding: 0 1;
+    margin-top: 1;
+    color: $accenthi;
+}}
+
+#today_columns {{
+    width: 1fr;
+    height: 1fr;
+    layout: horizontal;
+    margin-top: 0;
+}}
+
+#today_columns.stacked {{
+    layout: vertical;
+    overflow-y: scroll;
+}}
+
+#today_left_col {{
+    width: 29%;
+    min-width: 32;
+    height: 1fr;
+    layout: vertical;
+    margin-right: 1;
+}}
+
+#today_center_col {{
+    width: 42%;
+    min-width: 44;
+    height: 1fr;
+    layout: vertical;
+    margin-right: 1;
+}}
+
+#today_right_col {{
+    width: 29%;
+    min-width: 32;
+    height: 1fr;
+    layout: vertical;
+}}
+
+#today_columns.stacked #today_left_col,
+#today_columns.stacked #today_center_col,
+#today_columns.stacked #today_right_col {{
+    width: 100%;
+    height: auto;
+    margin-right: 0;
+    margin-bottom: 1;
+}}
+
 #now_card {{
     height: auto;
-    min-height: 5;
+    min-height: 6;
     padding: 1 2;
-    margin: 1 0 0 0;
     background: $panel;
     border: round $accent;
     border-title-color: $accenthi;
+    margin-bottom: 1;
 }}
 
-#priorities_card {{
+#todays_three_card {{
     height: 1fr;
-    min-height: 8;
-    padding: 1 2;
-    margin: 1 0 0 0;
-    background: $panel;
-    border: round $line;
-    border-title-color: $txtfaint;
-}}
-
-#today_bottom_row {{
-    height: auto;
-    min-height: 6;
-    max-height: 8;
-    layout: horizontal;
-    margin: 1 0 0 0;
-}}
-
-#commitments_card {{
-    width: 1fr;
-    height: 100%;
+    min-height: 9;
     padding: 1 2;
     background: $panel;
     border: round $line;
     border-title-color: $txtfaint;
-}}
-
-#routines_card {{
-    width: 1fr;
-    height: 100%;
-    padding: 1 2;
-    margin: 0 1;
-    background: $panel;
-    border: round $line;
-    border-title-color: $txtfaint;
+    margin-bottom: 1;
 }}
 
 #capture_card {{
-    width: 1fr;
-    height: 100%;
+    height: auto;
+    min-height: 5;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#plan_timeline_card {{
+    height: 1fr;
+    min-height: 14;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+    margin-bottom: 1;
+    overflow-y: scroll;
+}}
+
+#routines_strip_card {{
+    height: auto;
+    min-height: 8;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+}}
+
+#ai_brief_card {{
+    height: 1fr;
+    min-height: 12;
+    padding: 1 2;
+    background: $panel;
+    border: round $line;
+    border-title-color: $txtfaint;
+    margin-bottom: 1;
+}}
+
+#patterns_card {{
+    height: auto;
+    min-height: 7;
     padding: 1 2;
     background: $panel;
     border: round $line;
@@ -698,8 +787,8 @@ TextArea:focus {{ border: tall $accent; }}
     border-title-color: $txtfaint;
 }}
 
-/* ┌──────────────────────── plan & review screens ┐ */
-#plan_container, #review_container {{
+/* ┌──────────────────────── plan & review & ai screens ┐ */
+#plan_container, #review_container, #ai_container {{
     width: 1fr;
     height: 1fr;
     padding: 1 2;
@@ -709,7 +798,7 @@ TextArea:focus {{ border: tall $accent; }}
     layout: vertical;
 }}
 
-#timeline_view, #review_content {{
+#timeline_view, #review_content, #ai_console_content {{
     width: 1fr;
     height: 1fr;
     background: $inset;
