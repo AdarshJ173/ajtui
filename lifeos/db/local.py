@@ -481,6 +481,28 @@ class DatabaseManager:
                 (u, t_u, now_iso, now_iso, row["task_id"], row["date"]),
             )
 
+        # Journal entries migration
+        journal_cols = {row["name"] for row in conn.execute("PRAGMA table_info(journal_entries)").fetchall()}
+        if "uuid" not in journal_cols:
+            conn.execute("ALTER TABLE journal_entries ADD COLUMN uuid TEXT")
+        if "created_at" not in journal_cols:
+            conn.execute("ALTER TABLE journal_entries ADD COLUMN created_at TEXT")
+        if "updated_at" not in journal_cols:
+            conn.execute("ALTER TABLE journal_entries ADD COLUMN updated_at TEXT")
+        if "dirty" not in journal_cols:
+            conn.execute("ALTER TABLE journal_entries ADD COLUMN dirty INTEGER DEFAULT 0")
+        if "deleted" not in journal_cols:
+            conn.execute("ALTER TABLE journal_entries ADD COLUMN deleted INTEGER DEFAULT 0")
+
+        cur_j = conn.execute("SELECT id, date FROM journal_entries WHERE uuid IS NULL OR uuid = ''")
+        for row in cur_j.fetchall():
+            u = generate_uuid()
+            now_iso = current_iso_time()
+            conn.execute(
+                "UPDATE journal_entries SET uuid = ?, created_at = ?, updated_at = ? WHERE id = ?",
+                (u, now_iso, now_iso, row["id"]),
+            )
+
     def _enqueue_outbox(
         self,
         conn: sqlite3.Connection,
