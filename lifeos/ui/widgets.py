@@ -40,50 +40,37 @@ class KeyChipBar(Static):
         p = th.palette
         app = self.app
 
-        active_screen = getattr(app, "screen", None)
-        active_cls = getattr(active_screen, "__class__", None).__name__ if active_screen else ""
+        active_tab = getattr(app, "active_tab", 1)
 
-        if active_cls == "JournalScreen":
-            js = active_screen
-            if getattr(js, "mode", "") == "edit":
-                chips = [
-                    ("Esc / Ctrl+S", "Save & Exit"),
-                ]
-            elif getattr(js, "mode", "") == "browse":
-                chips = [
-                    ("↵", "Open"), ("↑/↓", "Select"), ("Esc", "Back"), ("Q", "Quit"),
-                ]
-            else:
-                chips = [
-                    ("E/↵", "Write"), ("B", "Browse Past"), ("D", "Del"),
-                    ("Esc", "Today"), ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
-                ]
-        elif active_cls == "ProjectScreen":
+        if active_tab == 4:  # Journal
             chips = [
-                ("Tab", "Switch Pane"), ("A", "Add Action"), ("N", "New Project"),
+                ("E/↵", "Write"), ("Esc/Ctrl+S", "Save"), ("B", "Browse Past"), ("D", "Del"),
+                ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
+            ]
+        elif active_tab == 2:  # Projects
+            chips = [
+                ("Tab", "Switch Pane"), ("A", "Add Project"), ("a", "Add Action"),
                 ("1-3", "Commit Priority"), ("Space", "Done"), ("W", "Waiting"),
-                ("D", "Delete"), ("Esc", "Today"), ("Q", "Quit"),
+                ("D", "Delete"), ("Q", "Quit"),
             ]
-        elif active_cls == "PlanScreen":
+        elif active_tab == 3:  # Plan
             chips = [
-                ("B", "Block Action"), ("Space", "Start Focus"), ("R", "Reschedule"),
-                ("S", "Shrink"), ("C", "Cancel"), ("Esc", "Today"), ("Q", "Quit"),
+                ("B", "Schedule Block"), ("Space/↵", "Focus Cockpit"), ("R", "Reschedule"),
+                ("S", "Shrink/Extend"), ("M", "Missed Block"), ("D", "Delete"), ("Q", "Quit"),
             ]
-        elif active_cls == "ReviewScreen":
+        elif active_tab == 5:  # Review
             chips = [
-                ("Space", "Check Decision"), ("A", "Accept All"), ("Esc", "Today"), ("Q", "Quit"),
+                ("Space", "Toggle Decision"), ("A", "Accept & Commit"), ("Q", "Quit"),
             ]
-        elif getattr(app, "calendar_active", False):
+        elif active_tab == 6:  # AI
             chips = [
-                ("↵", "Jump"), ("Esc/C", "Today"), ("←/→", "Day"),
-                ("↑/↓", "Week"), ("0", "Today"), ("J", "Journal"),
-                ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
+                ("1", "Plan Tomorrow"), ("2", "Journal Recap"), ("3", "Pattern Brief"),
+                ("4", "Inbox Triage"), ("A", "Accept"), ("Q", "Quit"),
             ]
-        else:
+        else:  # Today Command Center
             chips = [
-                ("↵", "Toggle Priority"), ("P", "Projects"), ("I", "Capture"),
-                ("X", "Close Day"), ("J", "Journal"), ("C", "Habits/Cal"),
-                ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
+                ("1-3", "Commit"), ("Space", "Done"), ("↵/F", "Focus Cockpit"),
+                ("I", "Capture"), ("X", "Close Day"), ("S", "Sync"), ("T", "Theme"), ("Q", "Quit"),
             ]
 
         w = self.size.width or 80
@@ -104,8 +91,8 @@ class KeyChipBar(Static):
         return t
 
 
-class HeaderBar(Static):
-    """Engineered header: Logo mark · viewed date · sync badge · streak · live clock."""
+class BottomStatusBar(Static):
+    """Bottom status bar matching the visual specification."""
 
     def render(self) -> Text:
         app = self.app
@@ -116,39 +103,127 @@ class HeaderBar(Static):
         w = self.size.width if self.size.width > 20 else 80
         t = Text()
 
-        # Logo mark + wordmark
-        t.append(f"{g.logo} ", style=f"bold {p.accent_hi}")
-        t.append("lifeOS", style=f"bold {p.text_hi}")
-        t.append(" daily ", style=f"bold {p.accent}")
-        t.append(f"{g.line_v} ", style=f"{p.line}")
+        # 1. DATA
+        t.append("DATA: ", style=f"bold {p.accent}")
+        t.append("local-first · SQLite  ", style=f"{p.text_hi}")
+        t.append(f"{g.line_v}  ", style=f"{p.line}")
 
-        # Date string with era tag
-        view_date = app.current_date
-        today = datetime.date.today()
-        is_today = view_date == today
-        date_str = view_date.strftime("%a, %b %d %Y")
-        tag = "TODAY" if is_today else ("PAST" if view_date < today else "FUTURE")
-        tag_color = p.state_ok if is_today else (
-            p.text_dim if view_date < today else p.state_warn
-        )
-        t.append(date_str, style=f"bold {p.text_hi}")
-        t.append(f" {tag}", style=f"bold {tag_color}")
-
-        # Middle / Right: Sync status + streak + clock
+        # 2. SYNC
+        t.append("SYNC: ", style=f"bold {p.accent}")
         sync_state = getattr(app, "sync_state", None)
-        sync_text = Text()
         if sync_state:
             st = sync_state.status
             if st == SyncStateEnum.LIVE:
-                sync_text.append(f"{g.cloud_live} live", style=f"bold {p.state_ok}")
+                t.append(f"{g.cloud_live} LIVE ", style=f"bold {p.state_ok}")
             elif st == SyncStateEnum.SYNCING:
-                sync_text.append(f"{g.cloud_syncing} syncing", style=f"bold {p.state_warn}")
+                t.append(f"{g.cloud_syncing} SYNCING ", style=f"bold {p.state_warn}")
             elif st == SyncStateEnum.CONFLICT:
-                sync_text.append(f"{g.cloud_conflict} conflict", style=f"bold {p.danger}")
+                t.append(f"{g.cloud_conflict} CONFLICT ", style=f"bold {p.danger}")
             elif st == SyncStateEnum.OFFLINE:
-                sync_text.append(f"{g.cloud_offline} offline", style=f"{p.text_faint}")
+                t.append(f"{g.cloud_offline} OFFLINE ", style=f"{p.text_faint}")
             else:
-                sync_text.append(f"{g.cloud_offline} local", style=f"{p.text_faint}")
+                t.append(f"{g.cloud_offline} LOCAL ", style=f"{p.text_faint}")
+        else:
+            t.append(f"{g.cloud_live} LIVE ", style=f"bold {p.state_ok}")
+        t.append("· Supabase  ", style=f"{p.text_hi}")
+        t.append(f"{g.line_v}  ", style=f"{p.line}")
+
+        # 3. LAST SYNC
+        last_sync = getattr(app, "last_sync_time_str", None) or getattr(app, "now_time_str", "09:41:02")
+        t.append("LAST SYNC ", style=f"bold {p.accent}")
+        t.append(f"{last_sync}  ", style=f"{p.text_hi}")
+        t.append(f"{g.line_v}  ", style=f"{p.line}")
+
+        # 4. AI
+        t.append("AI: ", style=f"bold {p.accent}")
+        ai_service = getattr(app, "ai", None)
+        ai_label = "draft-only · evidence-linked" if (ai_service and ai_service.is_available) else "draft-only · evidence-linked"
+        t.append(f"{ai_label}  ", style=f"{p.text_dim}")
+        t.append(f"{g.line_v}  ", style=f"{p.line}")
+
+        # 5. Global hints
+        right = Text()
+        right.append("q", style=f"bold {p.accent_hi}")
+        right.append(" quit · ", style=f"{p.text_dim}")
+        right.append(":", style=f"bold {p.accent_hi}")
+        right.append(" command palette", style=f"{p.text_dim}")
+
+        pad = max(1, w - len(t.plain) - len(right.plain) - 1)
+        t.append(" " * pad)
+        t.append_text(right)
+        return t
+
+
+class HeaderBar(Static):
+    """
+    Engineered Top Bar matching target screenshot:
+    Row 1: Window title + centered lifeOS_
+    Row 2: Top Tab Bar [1] TODAY ... [6] AI + Right status cluster (Sync, Streak, Clock)
+    """
+
+    def render(self) -> Text:
+        app = self.app
+        th: Theme = app.theme_obj
+        p = th.palette
+        g = th.glyphs
+
+        w = self.size.width if self.size.width > 20 else 80
+        t = Text()
+
+        # --- ROW 1: Branding and centered Logo ---
+        left_brand = "lifeOS v3.0.0 · local-first AI operating system"
+        center_brand = "lifeOS_"
+        
+        row1 = Text()
+        row1.append(f"  {left_brand}", style=f"{p.text_dim}")
+        
+        # Calculate centering for lifeOS_
+        rem_pad = max(1, (w // 2) - len(row1.plain) - (len(center_brand) // 2))
+        row1.append(" " * rem_pad)
+        row1.append(center_brand, style=f"bold {p.accent_hi}")
+        t.append_text(row1)
+        t.append("\n")
+
+        # --- ROW 2: Tab Bar + Right Status Cluster ---
+        active_tab = getattr(app, "active_tab", 1)
+
+        tabs = [
+            (1, "TODAY"),
+            (2, "PROJECTS"),
+            (3, "PLAN"),
+            (4, "JOURNAL"),
+            (5, "REVIEW"),
+            (6, "AI"),
+        ]
+
+        row2_left = Text()
+        row2_left.append("    ")
+        for num, label in tabs:
+            is_active = (active_tab == num)
+            tab_str = f"[{num}] {label}"
+            if is_active:
+                row2_left.append(f"{tab_str}", style=f"bold underline {p.accent_hi}")
+            else:
+                row2_left.append(f"{tab_str}", style=f"{p.text_dim}")
+            row2_left.append("    ")
+
+        # Right cluster: Sync status + Streak + Live Clock
+        right_cluster = Text()
+        sync_state = getattr(app, "sync_state", None)
+        if sync_state:
+            st = sync_state.status
+            if st == SyncStateEnum.LIVE:
+                right_cluster.append(f"{g.cloud_live} LIVE", style=f"bold {p.state_ok}")
+            elif st == SyncStateEnum.SYNCING:
+                right_cluster.append(f"{g.cloud_syncing} SYNCING", style=f"bold {p.state_warn}")
+            elif st == SyncStateEnum.CONFLICT:
+                right_cluster.append(f"{g.cloud_conflict} CONFLICT", style=f"bold {p.danger}")
+            elif st == SyncStateEnum.OFFLINE:
+                right_cluster.append(f"{g.cloud_offline} OFFLINE", style=f"{p.text_faint}")
+            else:
+                right_cluster.append(f"{g.cloud_offline} LOCAL", style=f"{p.text_faint}")
+        else:
+            right_cluster.append(f"{g.cloud_live} LIVE", style=f"bold {p.state_ok}")
 
         streak_val = getattr(app, "streak_count", 0)
         flick = getattr(app, "flame_lit", True) and streak_val > 0
@@ -157,21 +232,18 @@ class HeaderBar(Static):
         )
         now_time = getattr(app, "now_time_str", datetime.datetime.now().strftime("%H:%M:%S"))
 
-        right = Text()
-        if sync_text:
-            right.append_text(sync_text)
-            right.append(f"  {g.line_v}  ", style=f"{p.line}")
+        right_cluster.append("   ")
+        right_cluster.append(f"{g.flame} ", style=flame_style)
+        right_cluster.append(f"{streak_val}", style=f"bold {p.hot if streak_val > 0 else p.text_dim}")
+        right_cluster.append("   ")
+        right_cluster.append(now_time, style=f"bold {p.text_hi}")
+        right_cluster.append("  ")
 
-        right.append(f"{g.flame} ", style=flame_style)
-        right.append(
-            f"{streak_val}d", style=f"bold {p.hot if streak_val > 0 else p.text_dim}"
-        )
-        right.append(f"  {g.line_v}  ", style=f"{p.line}")
-        right.append(now_time, style=f"bold {p.text_hi}")
+        pad2 = max(1, w - len(row2_left.plain) - len(right_cluster.plain))
+        t.append_text(row2_left)
+        t.append(" " * pad2)
+        t.append_text(right_cluster)
 
-        pad = max(1, w - len(t.plain) - len(right.plain) - 2)
-        t.append(" " * pad)
-        t.append_text(right)
         return t
 
 

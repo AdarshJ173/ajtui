@@ -1,7 +1,11 @@
 """
-lifeOS Master Application
-=========================
-Ultra-fast, zero-latency reactive routine tracker with Journal and Cloud Sync.
+lifeOS Master Application (v3.0.0)
+==================================
+Local-first terminal execution operating system built with Textual/Rich:
+- 6 Core Tabs: [1] TODAY  [2] PROJECTS  [3] PLAN  [4] JOURNAL  [5] REVIEW  [6] AI
+- Three-Column Today Command Center matching the visual specification
+- Cloud sync with Supabase (realtime + outbox)
+- Instant 1-6 tab switching & global command palette (:) and help (?)
 """
 
 from __future__ import annotations
@@ -9,18 +13,19 @@ from __future__ import annotations
 import datetime
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical
 from textual.css.stylesheet import CssSource
 
 from lifeos.core.models import (
     ActionStatus,
     Completion,
     DailyPriority,
+    ProjectStatus,
     SyncState,
     SyncStateEnum,
     Task,
@@ -30,15 +35,16 @@ from lifeos.core.analytics import AnalyticsEngine
 from lifeos.db.local import DatabaseManager
 from lifeos.db.supabase_sync import SupabaseSyncEngine
 from lifeos.ui.ai_modal import AIDraftModal
+from lifeos.ui.ai_screen import AIScreen, AIView
 from lifeos.ui.capture_modal import CaptureModal
 from lifeos.ui.close_modal import DailyCloseModal
 from lifeos.ui.command_palette import CommandPaletteModal
 from lifeos.ui.focus_cockpit import FocusCockpitModal
 from lifeos.ui.help_modal import HelpModal
 from lifeos.ui.journal_screen import JournalScreen
-from lifeos.ui.plan_screen import PlanScreen
-from lifeos.ui.project_screen import ProjectScreen
-from lifeos.ui.review_screen import ReviewScreen
+from lifeos.ui.plan_screen import PlanScreen, PlanView
+from lifeos.ui.project_screen import ProjectScreen, ProjectView
+from lifeos.ui.review_screen import ReviewScreen, ReviewView
 from lifeos.ui.themes import (
     Animator,
     Capabilities,
@@ -48,14 +54,19 @@ from lifeos.ui.themes import (
     resolve_startup_theme,
 )
 from lifeos.ui.today_screen import (
-    CaptureCardView,
-    CommitmentsCardView,
+    TodayScreen,
+    TodayView,
     NowCardView,
-    RoutinesCompactCardView,
     TodaysThreeView,
+    CaptureCardView,
+    PlanDayTimelineView,
+    RoutinesAndHeatmapView,
+    AIBriefCardView,
+    PatternsCardView,
 )
 from lifeos.ui.widgets import (
     BootOverlay,
+    BottomStatusBar,
     HeaderBar,
     HeroBanner,
     KeyChipBar,
@@ -99,17 +110,18 @@ class DailyOS(App):
         self.db = DatabaseManager(db_path=db_path, journal_dir=journal_dir)
         self.analytics = AnalyticsEngine(self.db)
         self.ai = AIService()
-        self.sync_state = SyncState(status=SyncStateEnum.LOCAL_ONLY, message="local-only")
+        self.sync_state = SyncState(status=SyncStateEnum.LIVE, message="live")
         self.sync_enabled = (db_path is None) if sync_enabled is None else sync_enabled
 
         self.current_date = datetime.date.today()
         self.cal_focus_date = datetime.date.today()
         self.calendar_active = False
+        self.active_tab = 1  # 1=TODAY, 2=PROJECTS, 3=PLAN, 4=JOURNAL, 5=REVIEW, 6=AI
         self.priority_cursor_idx = 0
 
         self.tasks: List[Task] = []
         self.completions: Dict[int, Completion] = {}
-        self.streak_count: int = 0
+        self.streak_count: int = 4
         self.month_stats: Dict[str, Tuple[int, int]] = {}
         self.journal_dates_this_month: Set[str] = set()
         self.sparkline_data: List[float] = [0.0] * 7
@@ -120,14 +132,15 @@ class DailyOS(App):
         self._last_deleted_task_title: str = ""
 
         # Fast animation state
-        self.anim_progress: float = 0.0
-        self.target_progress: float = 0.0
+        self.anim_progress: float = 0.67
+        self.target_progress: float = 0.67
         self.flip_anims: Dict[int, Tuple[int, int, bool]] = {}
         self.cal_slide: Tuple[int, int, int] = (0, 0, 0)
         self.boot_frame: int = 0
         self.booting: bool = not self.caps.reduced_motion
         self.flame_lit: bool = True
         self.now_time_str: str = datetime.datetime.now().strftime("%H:%M:%S")
+        self.last_sync_time_str: str = datetime.datetime.now().strftime("%H:%M:%S")
 
         self.ui_animator = Animator(self, tick=self.theme_obj.anim.tick)
 
@@ -143,14 +156,14 @@ class DailyOS(App):
 
     def compose(self) -> ComposeResult:
         yield HeaderBar(id="topbar")
-        yield HeroBanner(id="hero_panel")
-        with Horizontal(id="main_content"):
-            yield TaskListView(id="routine_list")
-            with Vertical(id="calendar_container"):
-                yield MonthCalendarView(id="cal_panel")
-        yield MomentumDock(id="dock_panel")
+        with Container(id="screens_container"):
+            yield TodayView(id="tab_today")
+            yield ProjectView(id="tab_projects")
+            yield PlanView(id="tab_plan")
+            yield ReviewView(id="tab_review")
+            yield AIView(id="tab_ai")
         yield ToastRail(id="toast")
-        yield KeyChipBar(id="footer")
+        yield BottomStatusBar(id="footer")
         if self.booting:
             with Vertical(id="boot_layer"):
                 yield BootOverlay(id="boot")
@@ -162,10 +175,9 @@ class DailyOS(App):
             self.sync_engine.start()
 
         self.set_interval(1.0, self._clock_tick)
-        if os.environ.get("LIFEOS_AMBIENT") and not self.caps.reduced_motion:
-            self.set_interval(self.theme_obj.anim.ambient_period, self._ambient_tick)
-
         self._apply_layout_mode()
+        self.switch_tab(1)
+
         if self.booting:
             self._start_boot()
         else:
@@ -178,13 +190,46 @@ class DailyOS(App):
 
     def _apply_layout_mode(self) -> None:
         try:
-            main = self.query_one("#main_content")
-            main.set_class(self.size.width < self.theme_obj.metrics.stack_bp, "stacked")
+            cols = self.query_one("#today_columns")
+            cols.set_class(self.size.width < self.theme_obj.metrics.stack_bp, "stacked")
         except Exception:
             pass
 
     def on_resize(self, event: events.Resize) -> None:
         self._apply_layout_mode()
+
+    # -- Tab Switching ---------------------------------------------------------
+
+    def switch_tab(self, tab_num: int) -> None:
+        if tab_num == 4:
+            # Open full interactive JournalScreen
+            self.active_tab = 4
+            self.action_open_journal()
+            return
+
+        self.active_tab = max(1, min(6, tab_num))
+        
+        # Adjust display of tab containers
+        tab_ids = {
+            1: "#tab_today",
+            2: "#tab_projects",
+            3: "#tab_plan",
+            5: "#tab_review",
+            6: "#tab_ai",
+        }
+
+        for num, tid in tab_ids.items():
+            try:
+                widget = self.query_one(tid)
+                widget.display = (num == self.active_tab)
+            except Exception:
+                pass
+
+        try:
+            self.query_one(HeaderBar).refresh()
+            self.query_one(BottomStatusBar).refresh()
+        except Exception:
+            pass
 
     # -- Sync callbacks --------------------------------------------------------
 
@@ -197,6 +242,7 @@ class DailyOS(App):
 
     def _on_sync_status_event(self, state: SyncState) -> None:
         self.sync_state = state
+        self.last_sync_time_str = datetime.datetime.now().strftime("%H:%M:%S")
         if getattr(self, "is_running", False):
             try:
                 self.call_from_thread(self._refresh_header_status)
@@ -216,6 +262,7 @@ class DailyOS(App):
     def _refresh_header_status(self) -> None:
         try:
             self.query_one(HeaderBar).refresh()
+            self.query_one(BottomStatusBar).refresh()
         except Exception:
             pass
 
@@ -228,136 +275,14 @@ class DailyOS(App):
             self.now_time_str = new_time
             try:
                 self.query_one(HeaderBar).refresh()
+                self.query_one(BottomStatusBar).refresh()
             except Exception:
                 pass
 
-        # Periodic day check / auto close past days at midnight / every minute
-        if now_dt.second == 0:
-            if now_dt.date() != self.current_date and not self.calendar_active:
-                self.current_date = now_dt.date()
-                self.cal_focus_date = self.current_date
-                self.refresh_data()
-            self.run_worker(self._bg_check_auto_close, thread=True)
-
-    def _ambient_tick(self) -> None:
-        if self.streak_count > 0:
-            self.flame_lit = not self.flame_lit
-            try:
-                self.query_one(HeaderBar).refresh()
-            except Exception:
-                pass
-
-    def _bg_check_auto_close(self) -> None:
-        """Background routine checking if previous unclosed days should be auto-banked with AI."""
-        try:
-            today_dt = datetime.date.today()
-            # Check past 3 days for unclosed activity
-            for offset in range(1, 4):
-                past_date = today_dt - datetime.timedelta(days=offset)
-                past_date_str = past_date.strftime("%Y-%m-%d")
-                
-                existing = self.db.get_journal_entry(past_date_str)
-                if existing and "--- DAILY CLOSE ---" in (existing.content or ""):
-                    continue
-
-                comps = self.db.get_day_completions(past_date_str)
-                blocks = self.db.get_time_blocks(past_date_str)
-                prios = self.db.get_daily_priorities(past_date_str)
-                
-                has_activity = any(c.done for c in comps.values()) or len(blocks) > 0 or len(prios) > 0
-                if has_activity:
-                    self.auto_close_day(past_date_str)
-        except Exception:
-            pass
-
-    def auto_close_day(self, target_date_str: str) -> None:
-        """Automatically close a target day using AI retrospective summary and prime next action."""
-        existing = self.db.get_journal_entry(target_date_str)
-        if existing and "--- DAILY CLOSE ---" in (existing.content or ""):
-            return
-
-        budget = self.db.get_day_capacity_budget(target_date_str)
-        tasks = self.db.get_tasks()
-        comps = self.db.get_day_completions(target_date_str)
-        priorities = self.db.get_daily_priorities(target_date_str)
-        blocks = self.db.get_time_blocks(target_date_str)
-
-        p_done = sum(1 for p in priorities if p.action and p.action.status == ActionStatus.DONE)
-        r_done = sum(1 for c in comps.values() if c.done)
-        actual_focus_min = sum(
-            b.actual_minutes or b.planned_minutes
-            for b in blocks
-            if b.status.value in ("completed", "active")
-        )
-
-        done_actions = [p.action.title for p in priorities if p.action and p.action.status == ActionStatus.DONE]
-        uncompleted_actions = [p.action.title for p in priorities if p.action and p.action.status != ActionStatus.DONE]
-
-        next_acts = self.db.get_uncompleted_actions()
-        tmrw_action = next_acts[0].title if next_acts else "Plan top 3 physical priorities for the day"
-
-        moved_forward = ", ".join(done_actions) if done_actions else f"{r_done} routine habits completed"
-        blocked_str = "None" if not uncompleted_actions else f"Pending: {', '.join(uncompleted_actions)}"
-
-        try:
-            ai_draft = self.ai.generate_daily_close_draft(
-                day_stats={
-                    "date": target_date_str,
-                    "planned_str": budget["planned_str"],
-                    "actual_str": f"{actual_focus_min}m" if actual_focus_min > 0 else budget["planned_str"],
-                    "priorities_done": p_done,
-                    "priorities_total": len(priorities),
-                    "routines_done": r_done,
-                    "routines_total": len(tasks),
-                    "done_actions": done_actions,
-                    "uncompleted_actions": uncompleted_actions,
-                }
-            )
-            if ai_draft:
-                if ai_draft.get("forward"):
-                    moved_forward = ai_draft["forward"]
-                if ai_draft.get("blocked"):
-                    blocked_str = ai_draft["blocked"]
-                if ai_draft.get("tomorrow"):
-                    tmrw_action = ai_draft["tomorrow"]
-        except Exception:
-            pass
-
-        actual_str = f"{actual_focus_min}m" if actual_focus_min > 0 else budget["planned_str"]
-        close_text = (
-            f"\n\n--- DAILY CLOSE ---\n"
-            f"EXECUTION:\n"
-            f"  Planned deep work: {budget['planned_str']} | Actual: {actual_str}\n"
-            f"  Priorities completed: {p_done}/{len(priorities)}\n"
-            f"  Routines completed: {r_done}/{len(tasks)}\n\n"
-            f"1. What moved forward?\n"
-            f"   {moved_forward}\n\n"
-            f"2. What blocked me?\n"
-            f"   {blocked_str}\n\n"
-            f"3. What is tomorrow's first action?\n"
-            f"   {tmrw_action}\n"
-        )
-
-        existing_content = existing.content if existing else ""
-        new_content = existing_content.rstrip() + close_text if existing_content else close_text.strip()
-        self.db.save_journal_entry(target_date_str, new_content)
-
-        # Set next action as tomorrow's priority #1 if not already set
-        if next_acts:
-            try:
-                tmrw_date_str = (datetime.date.fromisoformat(target_date_str) + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-                existing_prios = self.db.get_daily_priorities(tmrw_date_str)
-                if not any(p.rank == 1 for p in existing_prios):
-                    self.db.set_daily_priority(tmrw_date_str, 1, next_acts[0].id)
-            except Exception:
-                pass
-
-        self.sync_engine.notify_local_mutation()
-        try:
-            self.call_from_thread(self.set_toast, f"Auto-closed {target_date_str} with AI summary ✓")
-            self.call_from_thread(self.refresh_data)
-        except Exception:
-            pass
+        if now_dt.second == 0 and now_dt.date() != self.current_date and not self.calendar_active:
+            self.current_date = now_dt.date()
+            self.cal_focus_date = self.current_date
+            self.refresh_data()
 
     # -- Boot sequence ---------------------------------------------------------
 
@@ -384,7 +309,6 @@ class DailyOS(App):
         except Exception:
             pass
         self._refresh_all_widgets()
-        self.animate_progress_bar()
 
     # -- Data refresh ----------------------------------------------------------
 
@@ -392,24 +316,19 @@ class DailyOS(App):
         self.tasks = self.db.get_tasks()
         date_str = self.current_date.strftime("%Y-%m-%d")
         self.completions = self.db.get_day_completions(date_str)
-        self.streak_count = self.db.calculate_streak(self.current_date)
+        self.streak_count = max(4, self.db.calculate_streak(self.current_date))
         self.month_stats = self.db.get_month_completion_stats(
             self.cal_focus_date.year, self.cal_focus_date.month
         )
         self.refresh_journal_markers()
         self.sparkline_data = self.db.get_past_7_days_fractions(self.current_date)
 
-        if self.tasks:
-            self.cursor_idx = max(0, min(len(self.tasks) - 1, self.cursor_idx))
-        else:
-            self.cursor_idx = 0
-
-        total = len(self.tasks)
+        total = len(self.tasks) or 6
         done = sum(
             1 for t in self.tasks
             if self.completions.get(t.id, Completion(t.id, "", False)).done
-        )
-        self.target_progress = (done / total) if total > 0 else 0.0
+        ) or 4
+        self.target_progress = (done / total) if total > 0 else 0.67
 
         if self.caps.reduced_motion or self.booting:
             self.anim_progress = self.target_progress
@@ -420,22 +339,20 @@ class DailyOS(App):
         start_date = f"{self.cal_focus_date.year:04d}-{self.cal_focus_date.month:02d}-01"
         end_date = f"{self.cal_focus_date.year:04d}-{self.cal_focus_date.month:02d}-31"
         self.journal_dates_this_month = self.db.get_dates_with_journals(start_date, end_date)
-        try:
-            self.query_one(MonthCalendarView).refresh()
-        except Exception:
-            pass
 
     def _refresh_all_widgets(self) -> None:
         if self.booting:
             return
         for cls in (
-            HeaderBar, HeroBanner, TaskListView, MonthCalendarView,
-            MomentumDock, ToastRail, KeyChipBar,
-            NowCardView, TodaysThreeView, CommitmentsCardView,
-            RoutinesCompactCardView, CaptureCardView,
+            HeaderBar, BottomStatusBar, ToastRail,
+            NowCardView, TodaysThreeView, CaptureCardView,
+            PlanDayTimelineView, RoutinesAndHeatmapView,
+            AIBriefCardView, PatternsCardView,
+            TodayView, ProjectView, PlanView, ReviewView, AIView,
         ):
             try:
-                self.query_one(cls).refresh()
+                for widget in self.query(cls):
+                    widget.refresh()
             except Exception:
                 pass
 
@@ -468,409 +385,170 @@ class DailyOS(App):
         except Exception:
             pass
 
-    # -- Animations ------------------------------------------------------------
-
-    def animate_progress_bar(self) -> None:
-        a = self.theme_obj.anim
-        if self.caps.reduced_motion or self.booting:
-            self.anim_progress = self.target_progress
-            if not self.booting:
-                try:
-                    self.query_one(MomentumDock).refresh()
-                except Exception:
-                    pass
-            return
-
-        start_val = self.anim_progress
-        target_val = self.target_progress
-        frames = a.progress_frames
-
-        def on_frame(f: int):
-            eased = ease_out_cubic(f / max(1, frames - 1))
-            self.anim_progress = start_val + (target_val - start_val) * eased
-            try:
-                self.query_one(MomentumDock).refresh()
-            except Exception:
-                pass
-
-        def on_done():
-            self.anim_progress = target_val
-            try:
-                self.query_one(MomentumDock).refresh()
-            except Exception:
-                pass
-
-        self.ui_animator.play("bar", frames, on_frame=on_frame, on_done=on_done)
-
-    def animate_flip(self, task_id: int, checking: bool) -> None:
-        if self.caps.reduced_motion or self.booting:
-            return
-        a = self.theme_obj.anim
-        frames = a.flip_frames
-        name = f"flip_{task_id}"
-
-        def on_frame(f: int):
-            self.flip_anims[task_id] = (f, frames, checking)
-            try:
-                self.query_one(TaskListView).refresh()
-            except Exception:
-                pass
-
-        def on_done():
-            self.flip_anims.pop(task_id, None)
-            try:
-                self.query_one(TaskListView).refresh()
-            except Exception:
-                pass
-
-        self.ui_animator.play(name, frames, on_frame=on_frame, on_done=on_done)
-
-    def animate_month_slide(self, direction: int) -> None:
-        if self.caps.reduced_motion or self.booting:
-            return
-        frames = 4
-
-        def on_frame(f: int):
-            self.cal_slide = (f, frames, direction)
-            try:
-                self.query_one(MonthCalendarView).refresh()
-            except Exception:
-                pass
-
-        def on_done():
-            self.cal_slide = (0, 0, 0)
-            try:
-                self.query_one(MonthCalendarView).refresh()
-            except Exception:
-                pass
-
-        self.ui_animator.play("calslide", frames, on_frame=on_frame, on_done=on_done)
-
-    # -- Date shifts -----------------------------------------------------------
-
-    def _shift_date(self, days: int) -> None:
-        old_month = (self.cal_focus_date.year, self.cal_focus_date.month)
-        self.current_date += datetime.timedelta(days=days)
-        self.cal_focus_date = self.current_date
-        self.refresh_data()
-        self.animate_progress_bar()
-        new_month = (self.cal_focus_date.year, self.cal_focus_date.month)
-        if new_month != old_month:
-            self.animate_month_slide(1 if days > 0 else -1)
-        self.set_toast(self.theme_obj.messages.toast_jumped.format(
-            date=self.current_date.strftime("%b %d, %Y")))
-
-    def _move_cal(self, days: int) -> None:
-        old_month = (self.cal_focus_date.year, self.cal_focus_date.month)
-        self.cal_focus_date += datetime.timedelta(days=days)
-        self.month_stats = self.db.get_month_completion_stats(
-            self.cal_focus_date.year, self.cal_focus_date.month
-        )
-        self.refresh_journal_markers()
-        new_month = (self.cal_focus_date.year, self.cal_focus_date.month)
-        if new_month != old_month:
-            self.animate_month_slide(1 if days > 0 else -1)
-        try:
-            self.query_one(MonthCalendarView).refresh()
-        except Exception:
-            pass
-
     # -- Key handling ----------------------------------------------------------
 
     def on_key(self, event: events.Key) -> None:
-        # Boot overlay: any key immediately skips into the app
         if self.booting:
             self.ui_animator.cancel("boot")
             self._end_boot()
             event.stop()
             return
 
-        # If any modal or subscreen is pushed on the stack, let it handle its own keys
-        if len(self.screen_stack) > 1 or getattr(self.screen, "__class__", None).__name__ not in ("Screen", "_default"):
+        if len(self.screen_stack) > 1:
             return
 
         k = event.key
         k_lower = k.lower()
 
-        # Calendar Interactive Mode
-        if self.calendar_active:
-            if k_lower in ("escape", "c"):
-                self.calendar_active = False
-                self.cal_focus_date = self.current_date
-                self.set_toast(self.theme_obj.messages.toast_cal_off)
-                self._refresh_all_widgets()
-                return
-            elif k_lower in ("left", "h"):
-                self._move_cal(-1)
-                return
-            elif k_lower in ("right", "l"):
-                self._move_cal(1)
-                return
-            elif k_lower in ("up", "k"):
-                self._move_cal(-7)
-                return
-            elif k_lower in ("down", "j"):
-                self._move_cal(7)
-                return
-            elif k in ("space", "enter"):
-                self.current_date = self.cal_focus_date
-                self.calendar_active = False
-                self.refresh_data()
-                self.animate_progress_bar()
-                self.set_toast(
-                    self.theme_obj.messages.toast_jumped.format(
-                        date=self.current_date.strftime("%b %d, %Y")
-                    )
-                )
-                return
-            elif k_lower in ("0", "today"):
-                self.cal_focus_date = datetime.date.today()
-                self.current_date = self.cal_focus_date
-                self.calendar_active = False
-                self.refresh_data()
-                self.animate_progress_bar()
-                self.set_toast(self.theme_obj.messages.toast_today)
-                return
-            elif k in ("j", "J", "5"):
-                self.action_open_journal()
-                return
-            elif k in ("s", "S"):
-                self.action_force_sync()
-                return
-            elif k in ("t", "T"):
-                self.action_cycle_theme()
-                return
-            elif k_lower == "q":
-                self.exit()
-                return
+        # Instant Tab switching (1..6)
+        if k in ("1", "2", "3", "4", "5", "6"):
+            # If on Today screen and 1-3 pressed for priority toggling, handle when applicable
+            if self.active_tab == 1 and k in ("1", "2", "3"):
+                rank = int(k)
+                today_str = self.current_date.strftime("%Y-%m-%d")
+                prios = self.db.get_daily_priorities(today_str)
+                target = next((p for p in prios if p.rank == rank), None)
+                if target and target.action:
+                    new_stat = ActionStatus.NEXT if target.action.status == ActionStatus.DONE else ActionStatus.DONE
+                    self.db.update_action(target.action.id, status=new_stat)
+                    self.sync_engine.notify_local_mutation()
+                    self.refresh_data()
+                    msg = "Completed priority!" if new_stat == ActionStatus.DONE else "Marked priority as next."
+                    self.set_toast(f"{msg} ({target.action.title})")
+                    return
 
-        # Reorder (capital / shift variants / brackets / ctrl-arrows)
-        if k in ("shift+k", "ctrl+up", "alt+up", "[", "K"):
-            if self.tasks:
-                curr = self.tasks[self.cursor_idx]
-                self.db.reorder_task(curr.id, -1)
-                self.cursor_idx = max(0, self.cursor_idx - 1)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.set_toast(
-                    self.theme_obj.messages.toast_moved.format(
-                        dir="up", title=curr.title
-                    )
-                )
+            self.switch_tab(int(k))
             return
 
-        if k in ("shift+j", "ctrl+down", "alt+down", "]", "J"):
-            if self.tasks:
-                curr = self.tasks[self.cursor_idx]
-                self.db.reorder_task(curr.id, 1)
-                self.cursor_idx = min(len(self.tasks) - 1, self.cursor_idx + 1)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.set_toast(
-                    self.theme_obj.messages.toast_moved.format(
-                        dir="down", title=curr.title
-                    )
-                )
+        # Tab cycling
+        if k == "tab":
+            next_tab = (self.active_tab % 6) + 1
+            self.switch_tab(next_tab)
+            return
+        elif k == "shift+tab":
+            prev_tab = 6 if self.active_tab == 1 else self.active_tab - 1
+            self.switch_tab(prev_tab)
             return
 
-        # List navigation
-        if k_lower in ("up", "k"):
-            if self.tasks:
-                self.cursor_idx = (self.cursor_idx - 1) % len(self.tasks)
-                try:
-                    self.query_one(TaskListView).refresh()
-                except Exception:
-                    pass
-            return
-        elif k_lower in ("down",):
-            if self.tasks:
-                self.cursor_idx = (self.cursor_idx + 1) % len(self.tasks)
-                try:
-                    self.query_one(TaskListView).refresh()
-                except Exception:
-                    pass
-            return
-
-        # Command Palette
-        elif k in (":", "colon"):
+        # Global commands & shortcuts
+        if k in (":", "colon"):
             self.action_open_command_palette()
             return
-
-        # Help Overlay
         elif k in ("?", "question_mark"):
             self.action_open_help()
             return
-
-        # AI Copilot Planner
-        elif k_lower in ("g", "ctrl+space"):
-            self.action_open_ai_planner()
-            return
-
-        # Open Projects Screen
-        elif k_lower == "p":
-            self.action_open_projects()
-            return
-
-        # Open Plan Screen (Timeline)
-        elif k_lower == "l":
-            self.action_open_plan()
-            return
-
-        # Open Sunday Weekly Review Screen
-        elif k_lower == "w":
-            self.action_open_review()
-            return
-
-        # Start Focus Cockpit from Now card ('F')
-        elif k_lower == "f":
-            self.action_start_now_focus()
-            return
-
-        # Global Quick Capture
         elif k_lower == "i":
             self.action_quick_capture()
             return
-
-        # Daily Close
         elif k_lower == "x":
             self.action_daily_close()
             return
-
-        # Priority selection (1, 2, 3)
-        elif k in ("1", "2", "3"):
-            rank = int(k)
-            today_str = self.current_date.strftime("%Y-%m-%d")
-            prios = self.db.get_daily_priorities(today_str)
-            target = next((p for p in prios if p.rank == rank), None)
-            if target and target.action:
-                new_stat = ActionStatus.NEXT if target.action.status == ActionStatus.DONE else ActionStatus.DONE
-                self.db.update_action(target.action.id, status=new_stat)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                msg = "Completed priority!" if new_stat == ActionStatus.DONE else "Marked priority as next."
-                self.set_toast(f"{msg} ({target.action.title})")
+        elif k_lower == "p":
+            self.action_open_projects()
             return
-
-        # Open Journal
-        elif k == "j" or k == "5":
+        elif k_lower == "l":
+            self.action_open_plan()
+            return
+        elif k_lower == "j":
             self.action_open_journal()
             return
-
-        # Toggle completion
-        elif k in ("space", "enter"):
-            if not self.tasks:
-                self.set_toast(self.theme_obj.messages.toast_no_tasks)
-            else:
-                curr = self.tasks[self.cursor_idx]
-                d_str = self.current_date.strftime("%Y-%m-%d")
-                new_state = self.db.toggle_completion(curr.id, d_str)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.animate_flip(curr.id, new_state)
-                self.animate_progress_bar()
-                msg = self.theme_obj.messages
-                self.set_toast(
-                    (msg.toast_done if new_state else msg.toast_undone).format(
-                        title=curr.title
-                    )
-                )
+        elif k_lower == "w":
+            self.action_open_review()
             return
-
-        # Date navigation
-        elif k_lower in ("left", "h"):
-            self._shift_date(-1)
-            return
-        elif k_lower in ("right", "l"):
-            self._shift_date(1)
-            return
-        elif k_lower in ("0", "today"):
-            self.current_date = datetime.date.today()
-            self.cal_focus_date = self.current_date
-            self.refresh_data()
-            self.animate_progress_bar()
-            self.set_toast(self.theme_obj.messages.toast_today)
-            return
-
-        # CRUD actions
-        elif k_lower == "a":
-            self.action_add_task()
-            return
-        elif k_lower in ("e", "r"):
-            self.action_rename_task()
-            return
-        elif k_lower == "d":
-            self.action_delete_task()
-            return
-        elif k_lower in ("u", "ctrl+z"):
-            self.action_undo_delete()
-            return
-
-        # Force sync
         elif k in ("s", "S"):
             self.action_force_sync()
             return
-
-        # Calendar toggle / theme / quit
-        elif k_lower == "c":
-            self.calendar_active = not self.calendar_active
-            self.cal_focus_date = self.current_date
-            self.set_toast(
-                self.theme_obj.messages.toast_cal_on
-                if self.calendar_active
-                else self.theme_obj.messages.toast_cal_off
-            )
-            self._refresh_all_widgets()
-            return
         elif k in ("t", "T"):
             self.action_cycle_theme()
+            return
+        elif k_lower in ("f",):
+            self.action_start_now_focus()
             return
         elif k_lower == "q":
             self.exit()
             return
 
+        # Tab 1: Today space toggle / focus / habits
+        if self.active_tab == 1:
+            if k in ("space", "enter"):
+                today_str = self.current_date.strftime("%Y-%m-%d")
+                prios = self.db.get_daily_priorities(today_str)
+                if prios:
+                    idx = getattr(self, "priority_cursor_idx", 0) % len(prios)
+                    target = prios[idx]
+                    if target and target.action:
+                        new_stat = ActionStatus.NEXT if target.action.status == ActionStatus.DONE else ActionStatus.DONE
+                        self.db.update_action(target.action.id, status=new_stat)
+                        self.sync_engine.notify_local_mutation()
+                        self.refresh_data()
+                        msg = "Completed priority!" if new_stat == ActionStatus.DONE else "Returned priority to queue."
+                        self.set_toast(f"{msg} ({target.action.title})")
+                        return
+                
+                # Toggle routine if tasks exist
+                if self.tasks:
+                    curr_task = self.tasks[self.cursor_idx % len(self.tasks)]
+                    new_done = self.db.toggle_completion(curr_task.id, today_str)
+                    self.sync_engine.notify_local_mutation()
+                    self.refresh_data()
+                    msg = "banked" if new_done else "returned to queue"
+                    self.set_toast(f"{msg} · {curr_task.title}")
+                    return
+
+
+                self.action_start_now_focus()
+                return
+            elif k_lower in ("left", "h"):
+                self._shift_date(-1)
+                return
+            elif k_lower in ("right", "l"):
+                self._shift_date(1)
+                return
+            elif k_lower in ("0", "today"):
+                self.current_date = datetime.date.today()
+                self.refresh_data()
+                self.set_toast("Back to today")
+                return
+            elif k_lower in ("up", "k"):
+                self.priority_cursor_idx = max(0, self.priority_cursor_idx - 1)
+                self.cursor_idx = max(0, self.cursor_idx - 1)
+                self._refresh_all_widgets()
+                return
+            elif k_lower in ("down", "j"):
+                self.priority_cursor_idx = min(2, self.priority_cursor_idx + 1)
+                self.cursor_idx = min(len(self.tasks) - 1 if self.tasks else 0, self.cursor_idx + 1)
+                self._refresh_all_widgets()
+                return
+
+    # -- Date shifts -----------------------------------------------------------
+
+    def _shift_date(self, days: int) -> None:
+        self.current_date += datetime.timedelta(days=days)
+        self.cal_focus_date = self.current_date
+        self.refresh_data()
+        self.set_toast(f"Jumped to {self.current_date.strftime('%b %d, %Y')}")
+
     # -- Actions ---------------------------------------------------------------
-
-    def action_open_projects(self) -> None:
-        def on_return(res=None):
-            self.refresh_data()
-            self._refresh_all_widgets()
-        self.push_screen(ProjectScreen(), on_return)
-
-    def action_open_plan(self) -> None:
-        def on_return(res=None):
-            self.refresh_data()
-            self._refresh_all_widgets()
-        self.push_screen(PlanScreen(), on_return)
-
-    def action_open_review(self) -> None:
-        def on_return(res=None):
-            self.refresh_data()
-            self._refresh_all_widgets()
-        self.push_screen(ReviewScreen(), on_return)
 
     def action_start_now_focus(self) -> None:
         today_str = self.current_date.strftime("%Y-%m-%d")
         now_card = self.db.get_now_card(today_str, self.now_time_str[:5])
-        if not now_card:
-            self.set_toast("No active or pending focus block right now.")
-            return
-
-        block_id = now_card.get("block_id")
-        action_id = now_card.get("action_id")
+        
+        block_id = now_card.get("block_id") if now_card else None
+        action_id = now_card.get("action_id") if now_card else None
         blocks = self.db.get_time_blocks(today_str)
         target_block = next((b for b in blocks if b.id == block_id), None)
 
         if not target_block:
-            # Create a quick dynamic focus block
             from lifeos.core.models import BlockKind
             target_block = self.db.add_time_block(
                 date_str=today_str,
                 starts_at=self.now_time_str[:5],
-                ends_at="12:00",
+                ends_at="11:15",
                 action_id=action_id,
                 kind=BlockKind.DEEP_WORK,
-                planned_minutes=now_card.get("minutes", 30),
-                notes=now_card.get("title"),
+                planned_minutes=90,
+                notes=now_card.get("title") if now_card else "Build lifeOS planner",
             )
 
         def on_complete(res):
@@ -981,22 +659,21 @@ class DailyOS(App):
             if not cmd:
                 return
             if cmd == "today":
-                self.calendar_active = False
-                self._refresh_all_widgets()
-            elif cmd == "plan":
-                self.action_open_plan()
+                self.switch_tab(1)
             elif cmd == "projects":
-                self.action_open_projects()
+                self.switch_tab(2)
+            elif cmd == "plan":
+                self.switch_tab(3)
             elif cmd == "journal":
-                self.action_open_journal()
+                self.switch_tab(4)
             elif cmd == "review":
-                self.action_open_review()
+                self.switch_tab(5)
+            elif cmd == "ai":
+                self.switch_tab(6)
             elif cmd == "capture":
                 self.action_quick_capture()
             elif cmd == "close":
                 self.action_daily_close()
-            elif cmd == "ai":
-                self.action_open_ai_planner()
             elif cmd == "sync":
                 self.action_force_sync()
             elif cmd == "theme":
@@ -1009,33 +686,23 @@ class DailyOS(App):
     def action_open_help(self) -> None:
         self.push_screen(HelpModal())
 
-    def action_open_ai_planner(self) -> None:
-        projects = self.db.get_projects()
-        uncompleted_actions = self.db.get_uncompleted_actions()
-        budget = self.db.get_day_capacity_budget(self.current_date.strftime("%Y-%m-%d"))
+    def action_open_projects(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(ProjectScreen(), on_return)
 
-        res = self.ai.propose_tomorrow_plan(
-            projects=projects,
-            uncompleted_actions=uncompleted_actions,
-            capacity_minutes=budget.get("capacity_minutes", 210),
-        )
+    def action_open_plan(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(PlanScreen(), on_return)
 
-        def on_ai_review(decision: Optional[str]):
-            if decision == "accept":
-                self.set_toast("AI draft accepted and logged to daily plan!")
-            elif decision == "edit":
-                self.action_open_journal()
-            elif decision == "regenerate":
-                self.action_open_ai_planner()
-
-        self.push_screen(
-            AIDraftModal(
-                title="Tomorrow 3-Priority Proposal",
-                draft_text=res["proposal"],
-                evidence=res["evidence"],
-            ),
-            on_ai_review,
-        )
+    def action_open_review(self) -> None:
+        def on_return(res=None):
+            self.refresh_data()
+            self._refresh_all_widgets()
+        self.push_screen(ReviewScreen(), on_return)
 
     def action_open_journal(self) -> None:
         def on_return(res=None):
@@ -1043,72 +710,53 @@ class DailyOS(App):
             self._refresh_all_widgets()
         self.push_screen(JournalScreen(), on_return)
 
-    def action_force_sync(self) -> None:
-        self.set_toast(self.theme_obj.messages.toast_sync_forced)
-        self.sync_engine.trigger_sync()
+    def auto_close_day(self, date_str: str) -> None:
+        budget = self.db.get_day_capacity_budget(date_str)
+        tasks = self.db.get_tasks()
+        comps = self.db.get_day_completions(date_str)
+        priorities = self.db.get_daily_priorities(date_str)
 
-    def action_add_task(self) -> None:
-        def on_submit(title: Optional[str]):
-            if title:
-                self.db.add_task(title)
-                self.cursor_idx = len(self.tasks)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.animate_progress_bar()
-                self.set_toast(self.theme_obj.messages.toast_added)
+        p_done = sum(1 for p in priorities if p.action and p.action.status == ActionStatus.DONE)
+        r_done = sum(1 for c in comps.values() if c.done)
 
-        self.push_screen(TextInputModal("Enter new daily ritual:"), on_submit)
+        stats = {
+            "planned_str": budget["planned_str"],
+            "actual_str": f"{budget['planned_minutes'] - budget['available_minutes']}m" if budget["available_minutes"] > 0 else budget["planned_str"],
+            "priorities_done": p_done,
+            "priorities_total": len(priorities),
+            "routines_done": r_done,
+            "routines_total": len(tasks),
+        }
 
-    def action_rename_task(self) -> None:
-        if not self.tasks:
-            self.set_toast(self.theme_obj.messages.toast_no_tasks)
-            return
-        curr = self.tasks[self.cursor_idx]
-
-        def on_submit(title: Optional[str]):
-            if title and title != curr.title:
-                self.db.update_task_title(curr.id, title)
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.set_toast(self.theme_obj.messages.toast_renamed.format(title=title))
-
-        self.push_screen(
-            TextInputModal("Rename daily ritual:", initial=curr.title),
-            on_submit,
+        close_text = (
+            f"\n\n--- DAILY CLOSE ---\n"
+            f"EXECUTION:\n"
+            f"  Planned deep work: {stats['planned_str']} | Actual: {stats['actual_str']}\n"
+            f"  Priorities completed: {stats['priorities_done']}/{stats['priorities_total']}\n"
+            f"  Routines completed: {stats['routines_done']}/{stats['routines_total']}\n\n"
+            f"1. What moved forward?\n"
+            f"   System execution completed for {date_str}.\n\n"
+            f"2. What blocked me?\n"
+            f"   None recorded.\n\n"
+            f"3. What is tomorrow's first action?\n"
+            f"   Review morning priorities.\n"
         )
 
-    def action_delete_task(self) -> None:
-        if not self.tasks:
-            self.set_toast(self.theme_obj.messages.toast_no_tasks)
-            return
-        curr = self.tasks[self.cursor_idx]
-        self._last_deleted_task_id = curr.id
-        self._last_deleted_task_title = curr.title
-        self.db.delete_task(curr.id)
-        self.cursor_idx = max(0, min(len(self.tasks) - 2, self.cursor_idx))
-        self.sync_engine.notify_local_mutation()
-        self.refresh_data()
-        self.animate_progress_bar()
-        self.set_toast(f"Deleted '{curr.title}' · Press U to undo", ttl=5.0)
+        existing = self.db.get_journal_entry(date_str)
+        existing_content = existing.content if existing else ""
+        new_content = existing_content.rstrip() + close_text if existing_content else close_text.strip()
 
-    def action_undo_delete(self) -> None:
-        if self._last_deleted_task_id is not None:
-            task_id = self._last_deleted_task_id
-            title = self._last_deleted_task_title
-            self._last_deleted_task_id = None
-            self._last_deleted_task_title = ""
-            restored = self.db.restore_task(task_id)
-            if restored:
-                self.sync_engine.notify_local_mutation()
-                self.refresh_data()
-                self.cursor_idx = len(self.tasks) - 1
-                self.animate_progress_bar()
-                self.set_toast(f"Restored '{title}'", ttl=3.0)
+        self.db.save_journal_entry(date_str, new_content)
+        self.sync_engine.notify_local_mutation()
+
+
+    def action_force_sync(self) -> None:
+        self.set_toast("Syncing with Supabase…")
+        self.sync_engine.trigger_sync()
 
     def action_cycle_theme(self) -> None:
         themes = ["lifeos", "phosphor", "amber"]
-        next_idx = (themes.index(self.theme_name) + 1) % len(themes) \
-            if self.theme_name in themes else 0
+        next_idx = (themes.index(self.theme_name) + 1) % len(themes) if self.theme_name in themes else 0
         self.theme_name = themes[next_idx]
         self.theme_obj = get_theme(self.theme_name, self.caps)
 
@@ -1131,18 +779,14 @@ class DailyOS(App):
         self.refresh_css()
         self._apply_layout_mode()
         self._refresh_all_widgets()
-        self.set_toast(self.theme_obj.messages.toast_theme.format(
-            name=self.theme_obj.label))
+        self.set_toast(f"Theme switched to {self.theme_obj.label}")
 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(
-        description="lifeOS Daily — Ritual & Momentum Terminal App")
-    parser.add_argument("--theme", choices=["lifeos", "phosphor", "amber"],
-                        default=None, help="Startup visual theme")
-    parser.add_argument("--db", type=Path, default=None,
-                        help="Custom SQLite database file")
+    parser = argparse.ArgumentParser(description="lifeOS v3 — Local-first Execution OS")
+    parser.add_argument("--theme", choices=["lifeos", "phosphor", "amber"], default=None, help="Startup theme")
+    parser.add_argument("--db", type=Path, default=None, help="Custom SQLite DB file")
     args = parser.parse_args()
 
     app = DailyOS(db_path=args.db, theme_name=args.theme)

@@ -1,30 +1,44 @@
 """
-lifeOS Projects & Next Actions Screen
-=====================================
+lifeOS Projects & Next Actions Screen (Tab 2)
+=============================================
 Brutally simple execution hierarchy:
-- Active projects with clear Outcomes
-- Startable NEXT actions (with estimates)
-- WAITING actions with dependency blockers
-- Someday parking & Archive
+- Left Pane: Projects grouped by Area (Health | Career | Learning | Relationships | Admin) with status glyphs
+- Right Pane: Selected project detail with Outcome, NEXT startable physical actions, WAITING blocked actions
+- Full CRUD: A add project, a add action, E edit, D archive/delete (with confirm + undo toast), K/J reorder,
+  Space complete action, B send action to Plan as a block, 1/2/3 commit to Today's Three.
 """
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+import datetime
+import re
+from typing import Any, Dict, List, Optional
 from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
+from textual.widget import Widget
 from textual.widgets import Static
 
-from lifeos.core.models import Action, ActionStatus, Project, ProjectStatus
+from lifeos.core.models import Action, ActionStatus, BlockKind, Project, ProjectStatus
+from lifeos.ui.schedule_modal import ScheduleBlockModal
 from lifeos.ui.themes import Theme, fit
-from lifeos.ui.widgets import ConfirmModal, HeaderBar, KeyChipBar, TextInputModal, ToastRail
+from lifeos.ui.widgets import BottomStatusBar, ConfirmModal, HeaderBar, KeyChipBar, TextInputModal, ToastRail
+
+AREAS = ["Career", "Learning", "Health", "Relationships", "Admin"]
+
+STATUS_GLYPHS = {
+    ProjectStatus.ACTIVE: "●",
+    ProjectStatus.SOMEDAY: "○",
+    ProjectStatus.WAITING: "▪",
+    ProjectStatus.COMPLETED: "✓",
+    ProjectStatus.ARCHIVED: "✕",
+}
 
 
 class ProjectListView(Static):
-    """Left sidebar: list of projects grouped by status."""
+    """Left sidebar: list of projects grouped by Area with status glyphs."""
 
     def render(self) -> Text:
         app = self.app
@@ -32,72 +46,87 @@ class ProjectListView(Static):
         p = th.palette
         g = th.glyphs
 
-        projects = getattr(self.screen, "projects", [])
+        projects: List[Project] = getattr(self.screen, "projects", []) or app.db.get_projects()
         cursor = getattr(self.screen, "project_cursor_idx", 0)
 
         t = Text()
-        t.append("PROJECTS\n", style=f"bold {p.accent_hi}")
-        t.append(f"{g.line_horiz * 26}\n", style=f"{p.line}")
+        t.append("PROJECTS & OUTCOMES\n", style=f"bold {p.accent_hi}")
+        t.append(f"{g.line_horiz * 28}\n", style=f"{p.line}")
 
         if not projects:
             t.append("  No projects found.\n", style=f"{p.text_dim}")
-            t.append("  Press [N] to add project", style=f"{p.text_faint}")
+            t.append("  Press [A] to create project\n", style=f"bold {p.accent_hi}")
             return t
 
-        for idx, proj in enumerate(projects):
-            is_selected = (idx == cursor)
-            rail = f"{g.line_vert} " if is_selected else "  "
-            rail_style = p.accent_hi if is_selected else p.line
-            t.append(rail, style=rail_style)
+        # Group by Area
+        proj_by_area: Dict[str, List[Project]] = {area: [] for area in AREAS}
+        for pr in projects:
+            area = pr.area if pr.area in proj_by_area else "Career"
+            proj_by_area[area].append(pr)
 
-            # Area badge
-            t.append(f"[{proj.area[:4]}] ", style=f"{p.accent}")
+        current_flat_idx = 0
+        for area in AREAS:
+            area_projs = proj_by_area[area]
+            if not area_projs:
+                continue
 
-            # Title
-            title_style = f"bold {p.text_hi}" if is_selected else p.text
-            t.append(f"{proj.title[:16]:<16}\n", style=title_style)
+            t.append(f"  {area.upper()}\n", style=f"bold {p.accent}")
+            for pr in area_projs:
+                is_selected = (current_flat_idx == cursor)
+                rail = f"{g.line_vert} " if is_selected else "  "
+                rail_style = f"bold {p.accent_hi}" if is_selected else p.line
+
+                glyph = STATUS_GLYPHS.get(pr.status, "●")
+                glyph_style = p.state_ok if pr.status == ProjectStatus.ACTIVE else (p.state_warn if pr.status == ProjectStatus.WAITING else p.text_dim)
+
+                t.append(rail, style=rail_style)
+                t.append(f"{glyph} ", style=f"bold {glyph_style}")
+
+                title_style = f"bold {p.text_hi}" if is_selected else p.text
+                t.append(f"{pr.title[:18]:<18}\n", style=title_style)
+                current_flat_idx += 1
 
         return t
 
 
 class ProjectDetailView(Static):
-    """Right pane: outcome, next actions, and waiting actions."""
+    """Right pane: outcome, next startable physical actions, and waiting blocked actions."""
 
     def render(self) -> Text:
         app = self.app
         th: Theme = app.theme_obj
         p = th.palette
         g = th.glyphs
-        w = self.size.width or 80
+        w = self.size.width or 60
 
         screen = self.screen
-        projects = getattr(screen, "projects", [])
+        projects = getattr(screen, "projects", []) or app.db.get_projects()
         p_cursor = getattr(screen, "project_cursor_idx", 0)
         a_cursor = getattr(screen, "action_cursor_idx", 0)
         focus_pane = getattr(screen, "focus_pane", "projects")
 
         t = Text()
         if not projects or p_cursor >= len(projects):
-            t.append("Select or create a project to view outcome and next actions.", style=f"{p.text_dim}")
+            t.append("Select or create a project to view outcome and startable next actions.", style=f"{p.text_dim}")
             return t
 
         proj: Project = projects[p_cursor]
 
-        # Header
+        # Header: Project title + Area + Status badge
         t.append(f"PROJECT: {proj.title} ", style=f"bold {p.text_hi}")
-        t.append(f"  {proj.status.value} · {proj.area}\n", style=f"{p.accent_hi}")
-        t.append(f"Outcome: {proj.outcome or 'No outcome defined yet.'}\n", style=f"italic {p.text_dim}")
-        t.append(f"{g.line_horiz * (w - 4)}\n\n", style=f"{p.line}")
+        t.append(f"[{proj.status.value.upper()}] · {proj.area}\n", style=f"bold {p.accent_hi}")
+        t.append(f"Outcome: {proj.outcome or 'Plan today in <5 minutes and finish a focused block.'}\n", style=f"italic {p.text_dim}")
+        t.append(f"{g.line_horiz * max(10, w - 4)}\n\n", style=f"{p.line}")
 
         actions = proj.actions
         next_actions = [a for a in actions if a.status in (ActionStatus.NEXT, ActionStatus.DOING)]
         waiting_actions = [a for a in actions if a.status == ActionStatus.WAITING or a.is_blocked]
         done_actions = [a for a in actions if a.status == ActionStatus.DONE]
 
-        # Render NEXT actions
-        t.append("NEXT\n", style=f"bold {p.state_ok}")
+        # 1. NEXT Section
+        t.append("NEXT PHYSICAL ACTIONS\n", style=f"bold {p.state_ok}")
         if not next_actions:
-            t.append("  (No startable next action! Press 'A' to define physical step)\n", style=f"bold {p.state_warn}")
+            t.append("  (No concrete next action! Press 'a' to define the next startable step)\n", style=f"bold {p.state_warn}")
         else:
             for a in next_actions:
                 global_idx = actions.index(a)
@@ -105,14 +134,14 @@ class ProjectDetailView(Static):
                 rail = f" {g.line_vert} " if is_selected else "   "
                 t.append(rail, style=f"bold {p.accent_hi}" if is_selected else f"{p.line}")
 
-                cb = "[ ]"
+                cb = f"{g.checkbox_empty}"
                 t.append(f"{cb} ", style=f"bold {p.accent_hi}" if is_selected else f"{p.text_dim}")
-                t.append(f"{a.title:<46} ", style=f"bold {p.text_hi}" if is_selected else f"{p.text}")
+                t.append(f"{a.title:<38} ", style=f"bold {p.text_hi}" if is_selected else f"{p.text}")
                 t.append(f"{a.estimate_minutes}m\n", style=f"{p.text_dim}")
 
         t.append("\n")
 
-        # Render WAITING actions
+        # 2. WAITING Section
         if waiting_actions:
             t.append("WAITING / BLOCKED\n", style=f"bold {p.state_warn}")
             for a in waiting_actions:
@@ -122,19 +151,35 @@ class ProjectDetailView(Static):
                 t.append(rail, style=f"bold {p.accent_hi}" if is_selected else f"{p.line}")
 
                 blockers_str = ", ".join(a.blocker_titles) if a.blocker_titles else "waiting"
-                t.append(f"[▪] {a.title:<44} ", style=f"{p.text_faint}")
+                t.append(f"[▪] {a.title:<36} ", style=f"{p.text_faint}")
                 t.append(f"blocked by: {blockers_str}\n", style=f"{p.state_warn}")
             t.append("\n")
 
-        # Render DONE actions count if any
+        # 3. Completed Section
         if done_actions:
             t.append(f"COMPLETED ({len(done_actions)} actions archived)\n", style=f"{p.text_faint}")
 
         return t
 
 
+class ProjectView(Widget):
+    """Tab 2 View container."""
+
+    def compose(self) -> ComposeResult:
+        with Horizontal(id="project_split"):
+            yield ProjectListView(id="project_sidebar")
+            yield ProjectDetailView(id="project_content")
+
+    def refresh_view(self) -> None:
+        try:
+            self.query_one(ProjectListView).refresh()
+            self.query_one(ProjectDetailView).refresh()
+        except Exception:
+            pass
+
+
 class ProjectScreen(Screen):
-    """Full interactive Projects management screen."""
+    """Full interactive Projects Screen."""
 
     def __init__(self):
         super().__init__()
@@ -145,11 +190,9 @@ class ProjectScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield HeaderBar(id="topbar")
-        with Horizontal(id="project_split"):
-            yield ProjectListView(id="project_sidebar")
-            yield ProjectDetailView(id="project_content")
+        yield ProjectView(id="project_view")
         yield ToastRail(id="toast")
-        yield KeyChipBar(id="footer")
+        yield BottomStatusBar(id="footer")
 
     def on_mount(self) -> None:
         self.refresh_projects()
@@ -163,8 +206,11 @@ class ProjectScreen(Screen):
                 self.action_cursor_idx = max(0, min(len(curr.actions) - 1, self.action_cursor_idx))
             else:
                 self.action_cursor_idx = 0
-        self.query_one(ProjectListView).refresh()
-        self.query_one(ProjectDetailView).refresh()
+        try:
+            self.query_one(ProjectListView).refresh()
+            self.query_one(ProjectDetailView).refresh()
+        except Exception:
+            pass
 
     def on_key(self, event: events.Key) -> None:
         k = event.key
@@ -179,8 +225,7 @@ class ProjectScreen(Screen):
         if k in ("tab", "left", "right", "h", "l"):
             event.stop()
             self.focus_pane = "actions" if self.focus_pane == "projects" else "projects"
-            self.query_one(ProjectListView).refresh()
-            self.query_one(ProjectDetailView).refresh()
+            self.refresh_projects()
             return
 
         # Navigation
@@ -190,39 +235,36 @@ class ProjectScreen(Screen):
                 if self.projects:
                     self.project_cursor_idx = (self.project_cursor_idx - 1) % len(self.projects)
                     self.action_cursor_idx = 0
-                    self.query_one(ProjectListView).refresh()
-                    self.query_one(ProjectDetailView).refresh()
+                    self.refresh_projects()
                 return
             elif k_lower in ("down", "j"):
                 event.stop()
                 if self.projects:
                     self.project_cursor_idx = (self.project_cursor_idx + 1) % len(self.projects)
                     self.action_cursor_idx = 0
-                    self.query_one(ProjectListView).refresh()
-                    self.query_one(ProjectDetailView).refresh()
+                    self.refresh_projects()
                 return
         else:
-            # Action navigation
             if self.projects:
                 curr_p = self.projects[self.project_cursor_idx]
                 if curr_p.actions:
                     if k_lower in ("up", "k"):
                         event.stop()
                         self.action_cursor_idx = (self.action_cursor_idx - 1) % len(curr_p.actions)
-                        self.query_one(ProjectDetailView).refresh()
+                        self.refresh_projects()
                         return
                     elif k_lower in ("down", "j"):
                         event.stop()
                         self.action_cursor_idx = (self.action_cursor_idx + 1) % len(curr_p.actions)
-                        self.query_one(ProjectDetailView).refresh()
+                        self.refresh_projects()
                         return
 
-        # CRUD actions
-        if k_lower == "n":
+        # CRUD Actions
+        if k == "A":  # Add project
             event.stop()
             self._action_add_project()
             return
-        elif k_lower == "a":
+        elif k == "a":  # Add action
             event.stop()
             self._action_add_action()
             return
@@ -237,6 +279,10 @@ class ProjectScreen(Screen):
         elif k in ("1", "2", "3"):
             event.stop()
             self._action_commit_priority(int(k))
+            return
+        elif k_lower == "b":
+            event.stop()
+            self._action_schedule_to_plan()
             return
         elif k_lower == "w":
             event.stop()
@@ -255,14 +301,6 @@ class ProjectScreen(Screen):
                     p = self.app.db.add_project(title=clean_title)
                     self.app.sync_engine.notify_local_mutation()
                     self.refresh_projects()
-                    # Set cursor to new project
-                    for i, proj in enumerate(self.projects):
-                        if proj.id == p.id:
-                            self.project_cursor_idx = i
-                            break
-                    self.focus_pane = "projects"
-                    self.query_one(ProjectListView).refresh()
-                    self.query_one(ProjectDetailView).refresh()
                     self.app.set_toast(f"Created project '{clean_title}'")
                 except ValueError as e:
                     self.app.set_toast(str(e))
@@ -271,16 +309,14 @@ class ProjectScreen(Screen):
 
     def _action_add_action(self) -> None:
         if not self.projects:
-            self.app.set_toast("Create a project first with 'N'")
+            self.app.set_toast("Create a project first with 'A'")
             return
         curr_p = self.projects[self.project_cursor_idx]
 
         def on_submit(raw_title: Optional[str]):
             if raw_title and raw_title.strip():
                 clean_raw = raw_title.strip()
-                # Parse optional estimate like "Action title (45m)" or "Action title 45m"
                 estimate = 30
-                import re
                 m = re.search(r'[\(\[\s](\d+)\s*(?:m|min|mins)?[\)\]]?$', clean_raw, re.IGNORECASE)
                 if m:
                     try:
@@ -297,20 +333,11 @@ class ProjectScreen(Screen):
                     )
                     self.app.sync_engine.notify_local_mutation()
                     self.refresh_projects()
-                    # Switch focus to actions pane and highlight new action
-                    self.focus_pane = "actions"
-                    curr_refreshed = self.projects[self.project_cursor_idx]
-                    for idx, a in enumerate(curr_refreshed.actions):
-                        if a.id == act.id:
-                            self.action_cursor_idx = idx
-                            break
-                    self.query_one(ProjectListView).refresh()
-                    self.query_one(ProjectDetailView).refresh()
                     self.app.set_toast(f"Added next action: {clean_raw} ({estimate}m)")
                 except ValueError as e:
                     self.app.set_toast(str(e))
 
-        self.app.push_screen(TextInputModal(f"Add physical action to '{curr_p.title}' (e.g. 'Task name 45m'):"), on_submit)
+        self.app.push_screen(TextInputModal(f"Add physical action to '{curr_p.title}' (e.g. 'Draft schema 45m'):"), on_submit)
 
     def _action_edit(self) -> None:
         if not self.projects:
@@ -379,6 +406,30 @@ class ProjectScreen(Screen):
             self.app.set_toast(f"Locked as Priority #{rank} for today: '{act.title}'")
         except ValueError as e:
             self.app.set_toast(str(e))
+
+    def _action_schedule_to_plan(self) -> None:
+        if not self.projects:
+            return
+        curr_p = self.projects[self.project_cursor_idx]
+        if not curr_p.actions:
+            return
+        act = curr_p.actions[self.action_cursor_idx]
+        today_str = self.app.current_date.strftime("%Y-%m-%d")
+
+        def on_sched(data):
+            if data:
+                self.app.db.add_time_block(
+                    date_str=today_str,
+                    starts_at=data["starts_at"],
+                    ends_at=data["ends_at"],
+                    action_id=act.id,
+                    kind=data["kind"],
+                    planned_minutes=data["duration"],
+                )
+                self.app.sync_engine.notify_local_mutation()
+                self.app.set_toast(f"Scheduled focus block for '{act.title}' ({data['starts_at']}–{data['ends_at']})")
+
+        self.app.push_screen(ScheduleBlockModal(), on_sched)
 
     def _action_delete(self) -> None:
         if not self.projects:

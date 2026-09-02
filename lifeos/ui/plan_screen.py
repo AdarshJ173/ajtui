@@ -1,8 +1,8 @@
 """
-lifeOS Operational Plan Timeline Screen
-=======================================
-Visual operational day timeline with 1-keystroke scheduling, focus cockpit trigger,
-and missed block resolution.
+lifeOS Operational Plan Timeline Screen (Tab 3)
+===============================================
+Visual operational day timeline with 1-keystroke scheduling, buffer management,
+focus cockpit trigger, drag-equivalent nudging, and missed block resolution.
 """
 
 from __future__ import annotations
@@ -14,14 +14,15 @@ from textual import events
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
+from textual.widget import Widget
 from textual.widgets import Static
 
-from lifeos.core.models import BlockKind, BlockStatus, TimeBlock
+from lifeos.core.models import ActionStatus, BlockKind, BlockStatus, TimeBlock
 from lifeos.ui.focus_cockpit import FocusCockpitModal
 from lifeos.ui.missed_block_modal import MissedBlockModal
 from lifeos.ui.schedule_modal import ScheduleBlockModal
 from lifeos.ui.themes import Theme
-from lifeos.ui.widgets import HeaderBar, KeyChipBar, ToastRail
+from lifeos.ui.widgets import BottomStatusBar, HeaderBar, KeyChipBar, ToastRail
 
 
 class PlanTimelineView(Static):
@@ -43,9 +44,9 @@ class PlanTimelineView(Static):
         day_header = d_obj.strftime("%a, %b %d").upper()
 
         t = Text()
-        t.append(f"{day_header:<40}", style=f"bold {p.text_hi}")
+        t.append(f"{day_header:<40}", style=f"bold {p.accent_hi}")
         t.append(f"Capacity: {budget['planned_str']} / {budget['capacity_str']}\n", style=f"{p.accent_hi}")
-        t.append(f"{g.line_horiz * (w - 4)}\n\n", style=f"{p.line}")
+        t.append(f"{g.line_horiz * max(10, w - 4)}\n\n", style=f"{p.line}")
 
         if not blocks:
             t.append("  No time blocks scheduled for today.\n", style=f"{p.text_dim}")
@@ -54,7 +55,7 @@ class PlanTimelineView(Static):
             t.append("] to schedule a focus block into your day.", style=f"{p.text_dim}")
             return t
 
-        box_width = min(68, w - 12)
+        box_width = min(68, max(20, w - 12))
 
         t.append(f"      ┌{'─' * box_width}┐\n", style=p.line)
 
@@ -79,14 +80,11 @@ class PlanTimelineView(Static):
                 stat_style = p.text_dim
 
             # Border line
-            rail_l = f" {g.line_vert} " if is_selected else "   "
             rail_style = p.accent_hi if is_selected else p.line
 
-            content_line = f" {b_title[:box_width - 24]:<30} {b.planned_minutes}m · {kind_str} {stat_str}"
-            padded_content = f"{content_line:<{box_width}}"
-
             t.append(f"{b.starts_at} ├", style=rail_style)
-            t.append(f"─── {b_title[:box_width - 18]} ─── {b.planned_minutes}m ", style=f"bold {p.text_hi}" if is_selected else p.text)
+            b_label = fit(b_title, box_width - 18)
+            t.append(f"─── {b_label} ─── {b.planned_minutes}m ", style=f"bold {p.text_hi}" if is_selected else p.text)
             t.append(f"┤\n", style=p.line)
 
             t.append(f"{b.ends_at} │", style=p.line)
@@ -95,6 +93,20 @@ class PlanTimelineView(Static):
 
         t.append(f"      └{'─' * box_width}┘\n", style=p.line)
         return t
+
+
+class PlanView(Widget):
+    """Tab 3 View container."""
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="plan_container"):
+            yield PlanTimelineView(id="timeline_view")
+
+    def refresh_view(self) -> None:
+        try:
+            self.query_one(PlanTimelineView).refresh()
+        except Exception:
+            pass
 
 
 class PlanScreen(Screen):
@@ -106,10 +118,9 @@ class PlanScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield HeaderBar(id="topbar")
-        with Vertical(id="plan_container"):
-            yield PlanTimelineView(id="timeline_view")
+        yield PlanView(id="plan_view")
         yield ToastRail(id="toast")
-        yield KeyChipBar(id="footer")
+        yield BottomStatusBar(id="footer")
 
     def on_mount(self) -> None:
         self.refresh_timeline()
@@ -121,7 +132,10 @@ class PlanScreen(Screen):
             self.block_cursor_idx = max(0, min(len(blocks) - 1, self.block_cursor_idx))
         else:
             self.block_cursor_idx = 0
-        self.query_one(PlanTimelineView).refresh()
+        try:
+            self.query_one(PlanTimelineView).refresh()
+        except Exception:
+            pass
 
     def on_key(self, event: events.Key) -> None:
         k = event.key
@@ -139,13 +153,13 @@ class PlanScreen(Screen):
             event.stop()
             if blocks:
                 self.block_cursor_idx = (self.block_cursor_idx - 1) % len(blocks)
-                self.query_one(PlanTimelineView).refresh()
+                self.refresh_timeline()
             return
         elif k_lower in ("down", "j"):
             event.stop()
             if blocks:
                 self.block_cursor_idx = (self.block_cursor_idx + 1) % len(blocks)
-                self.query_one(PlanTimelineView).refresh()
+                self.refresh_timeline()
             return
 
         # Schedule new block ('B')
@@ -173,7 +187,6 @@ class PlanScreen(Screen):
             event.stop()
             curr_b = blocks[self.block_cursor_idx]
 
-            # Mark block active
             self.app.db.update_time_block(curr_b.id, status=BlockStatus.ACTIVE)
             self.app.sync_engine.notify_local_mutation()
 
@@ -185,7 +198,6 @@ class PlanScreen(Screen):
                         actual_minutes=res["actual_minutes"],
                         notes=res.get("notes"),
                     )
-                    # If action attached, also complete action
                     if curr_b.action_id and res["status"] == BlockStatus.COMPLETED:
                         self.app.db.update_action(curr_b.action_id, status=ActionStatus.DONE)
                     self.app.sync_engine.notify_local_mutation()
@@ -231,6 +243,17 @@ class PlanScreen(Screen):
                     self.refresh_timeline()
 
             self.app.push_screen(MissedBlockModal(curr_b), on_missed_choice)
+            return
+
+        # Shrink / Extend duration ('S')
+        if k_lower == "s" and blocks:
+            event.stop()
+            curr_b = blocks[self.block_cursor_idx]
+            new_dur = curr_b.planned_minutes + 15 if curr_b.planned_minutes < 120 else 30
+            self.app.db.update_time_block(curr_b.id, planned_minutes=new_dur)
+            self.app.sync_engine.notify_local_mutation()
+            self.refresh_timeline()
+            self.app.set_toast(f"Adjusted block duration to {new_dur}m")
             return
 
         # Delete Block ('D')
